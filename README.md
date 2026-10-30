@@ -1,5 +1,22 @@
 # TS Police SI Prelims 2022 — mock test
 
+**Take the test:** https://akhil02hero.github.io/Si-quizes/
+
+## Why this exists
+
+This is a free, non-commercial practice tool to help aspirants preparing for the **Telangana State Police Sub-Inspector (SI) exam** get used to the real Prelims paper under exam conditions. It recreates the 2022 Prelims (200 questions on arithmetic, reasoning & mental ability, and general studies with a Telangana focus) as a timed mock test, so you can:
+
+- practise pacing at 50 seconds per question,
+- face the real marking scheme, including negative marks for wrong answers,
+- see your score against the qualifying mark, and
+- learn from a worked explanation for every question once you submit.
+
+No sign-up, no ads, no payment. Share it freely with anyone preparing for the exam.
+
+> **Disclaimer:** This is an independent study aid. It is not affiliated with or endorsed by the Telangana State Level Police Recruitment Board (TSLPRB). Questions are taken from the publicly released 2022 paper; answers and explanations were prepared for practice and may contain mistakes. Always confirm against the official key.
+
+## About the app
+
 Angular 20 app for a timed practice run of the Telangana Police SI Prelims 2022 paper (200 questions), with player names, a leaderboard and a "Playing now" list.
 
 ## Rules built in
