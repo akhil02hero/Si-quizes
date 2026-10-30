@@ -1,0 +1,23 @@
+rules_version = '2';
+
+// Friends-only quiz: no sign-in, so anyone with the site can read and write.
+// Each write is shape-checked to keep the data tidy. Tighten with Firebase Auth
+// (e.g. anonymous sign-in, doc id == request.auth.uid) before sharing widely.
+service cloud.firestore {
+  match /databases/{db}/documents {
+    match /scores/{playerId} {
+      allow read: if true;
+      allow write: if request.resource.data.keys().hasOnly(['name', 'best', 'attempts', 'updatedAt'])
+                   && request.resource.data.name is string
+                   && request.resource.data.name.size() > 0
+                   && request.resource.data.name.size() <= 24
+                   && request.resource.data.attempts is int;
+    }
+    match /presence/{playerId} {
+      allow read: if true;
+      allow write: if request.resource.data.name is string
+                   && request.resource.data.name.size() <= 24
+                   && request.resource.data.status in ['lobby', 'playing', 'done'];
+    }
+  }
+}

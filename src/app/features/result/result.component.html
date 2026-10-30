@@ -1,0 +1,59 @@
+<section class="sheet" style="gap:16px">
+  <span class="lbl">{{ s().section.name }} · Q{{ s().section.from }}–{{ s().section.to }}</span>
+  <div class="score"><b>{{ r().score }}</b><span>/ {{ r().total * 2 }}</span></div>
+  <div><span class="verdict" [class]="verdict()">{{ label[verdict()] }}</span></div>
+  <p class="note">
+    @if (r().total === 200) {
+      Above 60 is Qualified; above 150 is Well done.
+    } @else {
+      Cut-offs scaled for {{ r().total }} questions: above {{ cut().qualify }} is Qualified, above {{ cut().wellDone }} is Well done.
+    }
+  </p>
+  <div class="stats">
+    <div><b>{{ r().correct }}</b><span>Correct (+2 each)</span></div>
+    <div><b>{{ r().wrong }}</b><span>Wrong (−0.2 each)</span></div>
+    <div><b>{{ r().skipped }}</b><span>Skipped / timed out</span></div>
+    <div><b>{{ accuracy() }}</b><span>Accuracy of attempted</span></div>
+  </div>
+  @if (saveText()) { <p class="note">{{ saveText() }}</p> }
+  <div class="actions" style="justify-content:flex-start">
+    <button class="btn" type="button" (click)="again()">Take another test</button>
+  </div>
+</section>
+
+<app-leaderboard [section]="s().section.id" />
+
+<section class="sheet">
+  <h2>Answers &amp; explanations</h2>
+  <div class="chips" role="group" aria-label="Filter answers">
+    @for (f of filters; track f.id) {
+      <button class="chip" type="button" [attr.aria-pressed]="filter() === f.id" (click)="filter.set(f.id)">{{ f.label }}</button>
+    }
+  </div>
+  <ol class="review">
+    @for (item of review(); track item.q.n) {
+      <li>
+        <span class="n">Q{{ item.q.n }}</span>
+        <div class="body">
+          <p>{{ item.q.text }}</p>
+          @if (item.q.figure) { <img [src]="item.q.figure" alt="Figure for question {{ item.q.n }}" loading="lazy"> }
+          <ul class="ropts">
+            @for (o of item.q.options; track $index) {
+              <li [class.ans]="$index + 1 === item.q.answer" [class.mine]="$index + 1 === item.mine && item.mine !== item.q.answer">
+                ({{ $index + 1 }}) {{ o }}
+                @if ($index + 1 === item.q.answer) { <span>✓ answer</span> }
+                @else if ($index + 1 === item.mine) { <span>✗ your answer</span> }
+              </li>
+            }
+          </ul>
+          <p class="state" [class]="item.state">
+            {{ item.state === 'correct' ? 'Correct' : item.state === 'wrong' ? 'Wrong' : 'Skipped' }}
+          </p>
+          @if (item.q.explanation) { <p class="ex">{{ item.q.explanation }}</p> }
+        </div>
+      </li>
+    } @empty {
+      <li class="note">Nothing here.</li>
+    }
+  </ol>
+</section>
