@@ -1,26 +1,34 @@
 import { Question } from './models';
-import { cutoffs, scoreAnswers, verdictFor } from './scoring';
+import { cutoffsFor, scoreAnswers, verdictFor } from './scoring';
 
-const q = (answer: number): Question => ({ n: 1, text: '', options: ['a', 'b', 'c', 'd'], answer, explanation: '' });
+/** Builds a minimal question whose correct option is `correctOption`. */
+function questionWithCorrectOption(correctOption: number): Question {
+  return { number: 1, text: '', options: ['a', 'b', 'c', 'd'], correctOption, explanation: '' };
+}
 
 describe('scoring', () => {
   it('gives +2 per correct, -0.2 per wrong and 0 for skipped', () => {
-    const r = scoreAnswers([q(1), q(2), q(3), q(4)], [1, 3, 0, 4]);
-    expect(r).toEqual(jasmine.objectContaining({ correct: 2, wrong: 1, skipped: 1, score: 3.8, total: 4 }));
+    const questions = [1, 2, 3, 4].map(questionWithCorrectOption);
+    // Answers: Q1 right, Q2 wrong, Q3 skipped, Q4 right.
+    const result = scoreAnswers(questions, [1, 3, 0, 4]);
+
+    expect(result).toEqual(
+      jasmine.objectContaining({ correctCount: 2, wrongCount: 1, skippedCount: 1, score: 3.8, totalQuestions: 4 }),
+    );
   });
 
   it('can go negative', () => {
-    expect(scoreAnswers([q(1)], [2]).score).toBe(-0.2);
+    expect(scoreAnswers([questionWithCorrectOption(1)], [2]).score).toBe(-0.2);
   });
 
   it('uses 60 / 150 cut-offs for the full paper', () => {
-    expect(cutoffs(200)).toEqual({ qualify: 60, wellDone: 150 });
+    expect(cutoffsFor(200)).toEqual({ qualifyingScore: 60, wellDoneScore: 150 });
     expect(verdictFor(60, 200)).toBe('not-qualified');
     expect(verdictFor(60.2, 200)).toBe('qualified');
     expect(verdictFor(150.2, 200)).toBe('well-done');
   });
 
   it('scales cut-offs for a 50-question section', () => {
-    expect(cutoffs(50)).toEqual({ qualify: 15, wellDone: 37.5 });
+    expect(cutoffsFor(50)).toEqual({ qualifyingScore: 15, wellDoneScore: 37.5 });
   });
 });

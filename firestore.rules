@@ -1,23 +1,30 @@
 rules_version = '2';
 
-// Friends-only quiz: no sign-in, so anyone with the site can read and write.
-// Each write is shape-checked to keep the data tidy. Tighten with Firebase Auth
-// (e.g. anonymous sign-in, doc id == request.auth.uid) before sharing widely.
+// Firestore security rules for the shared leaderboard.
+//
+// There is no sign-in, so anyone who can open the site can read and write.
+// Each write is shape-checked to keep the data tidy. Before sharing widely,
+// tighten this with Firebase Auth (for example anonymous sign-in, and only
+// allow writes where the document id equals request.auth.uid).
 service cloud.firestore {
-  match /databases/{db}/documents {
+  match /databases/{database}/documents {
+
+    // One document per player: their best result in each section.
     match /scores/{playerId} {
       allow read: if true;
-      allow write: if request.resource.data.keys().hasOnly(['name', 'best', 'attempts', 'updatedAt'])
-                   && request.resource.data.name is string
-                   && request.resource.data.name.size() > 0
-                   && request.resource.data.name.size() <= 24
-                   && request.resource.data.attempts is int;
+      allow write: if request.resource.data.keys().hasOnly(['playerName', 'bestResultBySection', 'attemptCount', 'updatedAt'])
+                   && request.resource.data.playerName is string
+                   && request.resource.data.playerName.size() > 0
+                   && request.resource.data.playerName.size() <= 24
+                   && request.resource.data.attemptCount is int;
     }
+
+    // One document per player: what they are doing right now ("Playing now").
     match /presence/{playerId} {
       allow read: if true;
-      allow write: if request.resource.data.name is string
-                   && request.resource.data.name.size() <= 24
-                   && request.resource.data.status in ['lobby', 'playing', 'done'];
+      allow write: if request.resource.data.playerName is string
+                   && request.resource.data.playerName.size() <= 24
+                   && request.resource.data.activity in ['lobby', 'playing', 'done'];
     }
   }
 }

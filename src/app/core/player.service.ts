@@ -1,45 +1,77 @@
 import { Injectable, OnDestroy, inject, signal } from '@angular/core';
-import { LivePlayer } from './models';
+import { PlayerProgress } from './models';
 import { LEADERBOARD_BACKEND } from './leaderboard.tokens';
 
-const NAME_KEY = 'si-quiz.name';
-const ID_KEY = 'si-quiz.player-id';
-const HEARTBEAT_MS = 30_000;
+/** Browser-storage key for the name the player typed. */
+const PLAYER_NAME_STORAGE_KEY = 'si-quiz.name';
 
-/** Who is playing on this device: their chosen name, a stable anonymous id, and their live status. */
+/** Browser-storage key for the anonymous player id. */
+const PLAYER_ID_STORAGE_KEY = 'si-quiz.player-id';
+
+/** How often to re-send "I'm still here" while the page is open. */
+const PRESENCE_HEARTBEAT_INTERVAL_MS = 30_000;
+
+/** Longest name allowed, matching the input's maxlength and the Firestore rules. */
+export const MAX_PLAYER_NAME_LENGTH = 24;
+
+/** Status sent before the player starts a test. */
+const IN_LOBBY: PlayerProgress = { activity: 'lobby', currentQuestionNumber: 0, totalQuestions: 0, answeredCount: 0 };
+
+/**
+ * Who is playing on this device: the name they typed, an anonymous id that
+ * stays the same across visits, and their live progress for "Playing now".
+ *
+ * There is no sign-in. The id is a random UUID kept in the browser, so the
+ * same person on another device or after clearing site data counts as new.
+ */
 @Injectable({ providedIn: 'root' })
 export class PlayerService implements OnDestroy {
   private readonly backend = inject(LEADERBOARD_BACKEND);
-  private status: Omit<LivePlayer, 'playerId' | 'name' | 'lastSeen'> = { status: 'lobby', q: 0, total: 0, answered: 0 };
-  private readonly heartbeat = setInterval(() => this.publish(), HEARTBEAT_MS);
 
-  readonly id = this.loadId();
-  readonly name = signal(this.load(NAME_KEY) ?? '');
+  /** Last progress reported by the quiz; re-sent on every heartbeat. */
+  private currentProgress: PlayerProgress = IN_LOBBY;
 
-  setName(name: string): void {
-    const clean = name.trim().slice(0, 24);
-    this.name.set(clean);
-    try {
-      localStorage.setItem(NAME_KEY, clean);
-    } catch {
-      /* storage blocked: name lasts for this visit only */
-    }
-    this.publish();
+  /** Re-sends presence regularly so this player doesn't drop off "Playing now". */
+  private readonly heartbeatTimer = setInterval(() => this.publishPresence(), PRESENCE_HEARTBEAT_INTERVAL_MS);
+
+  /** Anonymous id for this browser. */
+  readonly playerId = this.loadOrCreatePlayerId();
+
+  /** The player's display name; empty until they type one. */
+  readonly playerName = signal(this.readFromStorage(PLAYER_NAME_STORAGE_KEY) ?? '');
+
+  /** Stores a new display name (trimmed and length-limited) and announces it. */
+  setPlayerName(name: string): void {
+    const cleanedName = name.trim().slice(0, MAX_PLAYER_NAME_LENGTH);
+    this.playerName.set(cleanedName);
+    this.writeToStorage(PLAYER_NAME_STORAGE_KEY, cleanedName);
+    this.publishPresence();
   }
 
-  setStatus(status: Omit<LivePlayer, 'playerId' | 'name' | 'lastSeen'>): void {
-    this.status = status;
-    this.publish();
+  /** Called by the quiz whenever the player moves, saves, finishes or returns to the lobby. */
+  updateProgress(progress: PlayerProgress): void {
+    this.currentProgress = progress;
+    this.publishPresence();
   }
 
-  private publish(): void {
-    if (!this.name()) return;
+  /** Marks the player as back on the start screen. */
+  returnToLobby(): void {
+    this.updateProgress(IN_LOBBY);
+  }
+
+  /** Sends this player's live status. Players without a name are not listed. */
+  private publishPresence(): void {
+    const playerName = this.playerName();
+    if (!playerName) return;
+
     this.backend
-      .setPresence({ playerId: this.id, name: this.name(), lastSeen: Date.now(), ...this.status })
+      .setPresence({ playerId: this.playerId, playerName, lastSeenAt: Date.now(), ...this.currentProgress })
+      // Presence is a nice-to-have; a failed update must never interrupt the test.
       .catch(() => {});
   }
 
-  private load(key: string): string | null {
+  /** Reads a value from browser storage, or null if storage is blocked (e.g. private mode). */
+  private readFromStorage(key: string): string | null {
     try {
       return localStorage.getItem(key);
     } catch {
@@ -47,19 +79,26 @@ export class PlayerService implements OnDestroy {
     }
   }
 
-  private loadId(): string {
-    const existing = this.load(ID_KEY);
-    if (existing) return existing;
-    const id = crypto.randomUUID();
+  /** Writes to browser storage. If storage is blocked, the value lasts for this visit only. */
+  private writeToStorage(key: string, value: string): void {
     try {
-      localStorage.setItem(ID_KEY, id);
+      localStorage.setItem(key, value);
     } catch {
-      /* fine: a new id per visit */
+      // Ignore: the app still works, it just won't remember this next time.
     }
-    return id;
+  }
+
+  /** Reuses this browser's id, or creates and stores a new one on the first visit. */
+  private loadOrCreatePlayerId(): string {
+    const existingId = this.readFromStorage(PLAYER_ID_STORAGE_KEY);
+    if (existingId) return existingId;
+
+    const newId = crypto.randomUUID();
+    this.writeToStorage(PLAYER_ID_STORAGE_KEY, newId);
+    return newId;
   }
 
   ngOnDestroy(): void {
-    clearInterval(this.heartbeat);
+    clearInterval(this.heartbeatTimer);
   }
 }

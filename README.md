@@ -52,8 +52,8 @@ Data layout:
 
 | Collection | Doc id | Contents |
 |---|---|---|
-| `scores` | player id | `name`, `best` (best result per section), `attempts`, `updatedAt` |
-| `presence` | player id | `name`, `status`, `q`, `total`, `answered`, `lastSeen` |
+| `scores` | player id | `playerName`, `bestResultBySection`, `attemptCount`, `updatedAt` |
+| `presence` | player id | `playerName`, `activity`, `currentQuestionNumber`, `totalQuestions`, `answeredCount`, `lastSeenAt` |
 
 The player id is a random UUID stored in the browser, so there is no sign-in. The rules are open to anyone who has the site, which is fine among friends; add Firebase Auth before sharing it publicly.
 
@@ -70,7 +70,7 @@ Any static host works. Serve `dist/si-prelims-quiz/browser` and rewrite unknown 
 src/app/
   core/
     questions.ts            all 200 questions, answers and explanations
-    models.ts               types and sections
+    models.ts               types and sections (documented field by field)
     scoring.ts (+ .spec)    marks, cut-offs, verdicts
     quiz.service.ts         attempt state, per-question timers, save/previous/submit
     player.service.ts       name, anonymous id, live status heartbeat

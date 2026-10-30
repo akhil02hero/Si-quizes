@@ -1,50 +1,93 @@
-import { Question, Result } from './models';
+/**
+ * Exam rules: time per question, marks, cut-offs and how a set of answers
+ * turns into a score and a verdict. Kept free of Angular so it is easy to test.
+ */
+import { Question, TestResult } from './models';
 
+/** Each question gets its own 50-second budget. */
 export const SECONDS_PER_QUESTION = 50;
-export const MARK_CORRECT = 2;
-export const MARK_WRONG = -0.2;
-/** Cut-offs for the full 200-question paper (max 400). */
-export const QUALIFY_CUTOFF = 60;
-export const WELL_DONE_CUTOFF = 150;
 
-const round1 = (x: number) => Math.round(x * 10) / 10;
+/** Marks for a correct answer. */
+export const MARKS_FOR_CORRECT = 2;
 
-/** `answers[i]` is the saved option (1-4) for `questions[i]`, or 0 if none. */
-export function scoreAnswers(questions: readonly Question[], answers: readonly number[], at = Date.now()): Result {
-  let correct = 0;
-  let wrong = 0;
-  answers.forEach((a, i) => {
-    if (!a) return;
-    if (a === questions[i].answer) correct++;
-    else wrong++;
+/** Marks for a wrong answer (negative marking). Skipped questions score 0. */
+export const MARKS_FOR_WRONG = -0.2;
+
+/** A full-paper score above this is "Qualified" (the paper is out of 400). */
+export const QUALIFYING_SCORE_FULL_PAPER = 60;
+
+/** A full-paper score above this is "Well done". */
+export const WELL_DONE_SCORE_FULL_PAPER = 150;
+
+/** Number of questions in the full paper; cut-offs are scaled relative to this. */
+const FULL_PAPER_QUESTION_COUNT = 200;
+
+/** Rounds to one decimal place, so -0.2 steps don't show floating-point noise like 3.8000000001. */
+function roundToOneDecimal(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+/**
+ * Scores a submitted test.
+ *
+ * @param questions the questions in the test, in order
+ * @param savedAnswers the saved option for each question (1-4), or 0 when unanswered;
+ *                     savedAnswers[position] belongs to questions[position]
+ * @param submittedAt when the test was submitted; defaults to now
+ */
+export function scoreAnswers(
+  questions: readonly Question[],
+  savedAnswers: readonly number[],
+  submittedAt = Date.now(),
+): TestResult {
+  let correctCount = 0;
+  let wrongCount = 0;
+
+  savedAnswers.forEach((savedOption, position) => {
+    const isUnanswered = savedOption === 0;
+    if (isUnanswered) return;
+
+    if (savedOption === questions[position].correctOption) correctCount++;
+    else wrongCount++;
   });
+
   return {
-    score: round1(correct * MARK_CORRECT + wrong * MARK_WRONG),
-    correct,
-    wrong,
-    skipped: questions.length - correct - wrong,
-    total: questions.length,
-    at,
+    score: roundToOneDecimal(correctCount * MARKS_FOR_CORRECT + wrongCount * MARKS_FOR_WRONG),
+    correctCount,
+    wrongCount,
+    skippedCount: questions.length - correctCount - wrongCount,
+    totalQuestions: questions.length,
+    submittedAt,
   };
 }
 
+/** How a score is judged against the cut-offs. */
 export type Verdict = 'well-done' | 'qualified' | 'not-qualified';
 
-/** Cut-offs scale with the number of questions attempted (60/150 for the full 200). */
-export function cutoffs(total: number) {
-  const f = total / 200;
-  return { qualify: round1(QUALIFY_CUTOFF * f), wellDone: round1(WELL_DONE_CUTOFF * f) };
-}
-
-export function verdictFor(score: number, total: number): Verdict {
-  const c = cutoffs(total);
-  if (score > c.wellDone) return 'well-done';
-  if (score > c.qualify) return 'qualified';
-  return 'not-qualified';
-}
-
-export const VERDICT_LABEL: Record<Verdict, string> = {
+/** Text shown for each verdict. */
+export const VERDICT_LABELS: Record<Verdict, string> = {
   'well-done': 'Well done',
   qualified: 'Qualified',
   'not-qualified': 'Not qualified',
 };
+
+/**
+ * Cut-off scores for a test of the given length.
+ * The full paper uses 60 and 150; a shorter section scales them down in proportion,
+ * so a 50-question section uses 15 and 37.5.
+ */
+export function cutoffsFor(totalQuestions: number): { qualifyingScore: number; wellDoneScore: number } {
+  const shareOfFullPaper = totalQuestions / FULL_PAPER_QUESTION_COUNT;
+  return {
+    qualifyingScore: roundToOneDecimal(QUALIFYING_SCORE_FULL_PAPER * shareOfFullPaper),
+    wellDoneScore: roundToOneDecimal(WELL_DONE_SCORE_FULL_PAPER * shareOfFullPaper),
+  };
+}
+
+/** Judges a score. The score must be strictly above a cut-off to pass it. */
+export function verdictFor(score: number, totalQuestions: number): Verdict {
+  const { qualifyingScore, wellDoneScore } = cutoffsFor(totalQuestions);
+  if (score > wellDoneScore) return 'well-done';
+  if (score > qualifyingScore) return 'qualified';
+  return 'not-qualified';
+}

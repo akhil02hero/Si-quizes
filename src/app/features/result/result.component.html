@@ -1,59 +1,84 @@
-<section class="sheet" style="gap:16px">
-  <span class="lbl">{{ s().section.name }} · Q{{ s().section.from }}–{{ s().section.to }}</span>
-  <div class="score"><b>{{ r().score }}</b><span>/ {{ r().total * 2 }}</span></div>
-  <div><span class="verdict" [class]="verdict()">{{ label[verdict()] }}</span></div>
-  <p class="note">
-    @if (r().total === 200) {
+<!-- Score summary -->
+<section class="card" style="gap:16px">
+  <span class="section-label">
+    {{ session().section.name }} · Q{{ session().section.firstQuestionNumber }}–{{ session().section.lastQuestionNumber }}
+  </span>
+
+  <!-- Big score out of the maximum (2 marks per question) -->
+  <div class="score-line"><b>{{ result().score }}</b><span>/ {{ result().totalQuestions * 2 }}</span></div>
+  <div><span class="verdict" [class]="verdict()">{{ verdictLabels[verdict()] }}</span></div>
+
+  <p class="hint-text">
+    @if (isFullPaper()) {
       Above 60 is Qualified; above 150 is Well done.
     } @else {
-      Cut-offs scaled for {{ r().total }} questions: above {{ cut().qualify }} is Qualified, above {{ cut().wellDone }} is Well done.
+      Cut-offs scaled for {{ result().totalQuestions }} questions:
+      above {{ cutoffs().qualifyingScore }} is Qualified, above {{ cutoffs().wellDoneScore }} is Well done.
     }
   </p>
-  <div class="stats">
-    <div><b>{{ r().correct }}</b><span>Correct (+2 each)</span></div>
-    <div><b>{{ r().wrong }}</b><span>Wrong (−0.2 each)</span></div>
-    <div><b>{{ r().skipped }}</b><span>Skipped / timed out</span></div>
-    <div><b>{{ accuracy() }}</b><span>Accuracy of attempted</span></div>
+
+  <div class="score-breakdown">
+    <div><b>{{ result().correctCount }}</b><span>Correct (+2 each)</span></div>
+    <div><b>{{ result().wrongCount }}</b><span>Wrong (−0.2 each)</span></div>
+    <div><b>{{ result().skippedCount }}</b><span>Skipped / timed out</span></div>
+    <div><b>{{ accuracyText() }}</b><span>Accuracy of attempted</span></div>
   </div>
-  @if (saveText()) { <p class="note">{{ saveText() }}</p> }
-  <div class="actions" style="justify-content:flex-start">
-    <button class="btn" type="button" (click)="again()">Take another test</button>
+
+  @if (leaderboardSaveMessage()) {
+    <p class="hint-text">{{ leaderboardSaveMessage() }}</p>
+  }
+
+  <div class="button-row" style="justify-content:flex-start">
+    <button class="button" type="button" (click)="takeAnotherTest()">Take another test</button>
   </div>
 </section>
 
-<app-leaderboard [section]="s().section.id" />
+<!-- Leaderboard opens on the section just taken -->
+<app-leaderboard [initialSectionId]="session().section.id" />
 
-<section class="sheet">
+<!-- Every question with the answer and explanation -->
+<section class="card">
   <h2>Answers &amp; explanations</h2>
-  <div class="chips" role="group" aria-label="Filter answers">
-    @for (f of filters; track f.id) {
-      <button class="chip" type="button" [attr.aria-pressed]="filter() === f.id" (click)="filter.set(f.id)">{{ f.label }}</button>
+
+  <div class="pill-group" role="group" aria-label="Filter answers">
+    @for (filter of reviewFilters; track filter.id) {
+      <button class="pill" type="button" [attr.aria-pressed]="selectedReviewFilter() === filter.id"
+              (click)="selectedReviewFilter.set(filter.id)">{{ filter.label }}</button>
     }
   </div>
-  <ol class="review">
-    @for (item of review(); track item.q.n) {
+
+  <ol class="answer-review">
+    @for (item of reviewItems(); track item.question.number) {
       <li>
-        <span class="n">Q{{ item.q.n }}</span>
-        <div class="body">
-          <p>{{ item.q.text }}</p>
-          @if (item.q.figure) { <img [src]="item.q.figure" alt="Figure for question {{ item.q.n }}" loading="lazy"> }
-          <ul class="ropts">
-            @for (o of item.q.options; track $index) {
-              <li [class.ans]="$index + 1 === item.q.answer" [class.mine]="$index + 1 === item.mine && item.mine !== item.q.answer">
-                ({{ $index + 1 }}) {{ o }}
-                @if ($index + 1 === item.q.answer) { <span>✓ answer</span> }
-                @else if ($index + 1 === item.mine) { <span>✗ your answer</span> }
+        <span class="question-number">Q{{ item.question.number }}</span>
+        <div class="review-body">
+          <p>{{ item.question.text }}</p>
+          @if (item.question.figureImagePath) {
+            <img [src]="item.question.figureImagePath" alt="Figure for question {{ item.question.number }}" loading="lazy">
+          }
+
+          <!-- All four options: the correct one in green, the player's wrong pick in red -->
+          <ul class="review-options">
+            @for (optionText of item.question.options; track $index) {
+              @let optionNumber = $index + 1;
+              @let isCorrectOption = optionNumber === item.question.correctOption;
+              @let isPlayersWrongPick = optionNumber === item.playerAnswer && !isCorrectOption;
+              <li [class.is-correct-option]="isCorrectOption" [class.is-wrong-pick]="isPlayersWrongPick">
+                ({{ optionNumber }}) {{ optionText }}
+                @if (isCorrectOption) { <span>✓ answer</span> }
+                @else if (isPlayersWrongPick) { <span>✗ your answer</span> }
               </li>
             }
           </ul>
-          <p class="state" [class]="item.state">
-            {{ item.state === 'correct' ? 'Correct' : item.state === 'wrong' ? 'Wrong' : 'Skipped' }}
-          </p>
-          @if (item.q.explanation) { <p class="ex">{{ item.q.explanation }}</p> }
+
+          <p class="outcome" [class]="item.outcome">{{ outcomeLabels[item.outcome] }}</p>
+          @if (item.question.explanation) {
+            <p class="explanation">{{ item.question.explanation }}</p>
+          }
         </div>
       </li>
     } @empty {
-      <li class="note">Nothing here.</li>
+      <li class="hint-text">Nothing here.</li>
     }
   </ol>
 </section>

@@ -1,12 +1,37 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { QuizService } from '../../core/quiz.service';
+import { NO_ANSWER, QuizService } from '../../core/quiz.service';
 import { PlayerService } from '../../core/player.service';
-import { VERDICT_LABEL, cutoffs, verdictFor } from '../../core/scoring';
+import { Question } from '../../core/models';
+import { VERDICT_LABELS, cutoffsFor, verdictFor } from '../../core/scoring';
 import { LeaderboardComponent } from '../../shared/leaderboard.component';
 
-type Filter = 'all' | 'wrong' | 'skipped' | 'correct';
+/** How a single answer turned out. */
+type AnswerOutcome = 'correct' | 'wrong' | 'skipped';
 
+/** Which answers to list in the review. */
+type ReviewFilter = 'all' | AnswerOutcome;
+
+/** One question in the answer review. */
+interface ReviewItem {
+  question: Question;
+  /** Option the player saved (1-4), or NO_ANSWER. */
+  playerAnswer: number;
+  outcome: AnswerOutcome;
+}
+
+/** Text shown for each outcome in the review. */
+const OUTCOME_LABELS: Record<AnswerOutcome, string> = {
+  correct: 'Correct',
+  wrong: 'Wrong',
+  skipped: 'Skipped',
+};
+
+/**
+ * Result screen: score and verdict, the counts, the leaderboard, and every
+ * question with the correct answer, the player's answer and the explanation.
+ * This is the first place right and wrong are shown.
+ */
 @Component({
   selector: 'app-result',
   imports: [LeaderboardComponent],
@@ -15,51 +40,68 @@ type Filter = 'all' | 'wrong' | 'skipped' | 'correct';
 })
 export class ResultComponent {
   private readonly router = inject(Router);
-  private readonly player = inject(PlayerService);
-  protected readonly quiz = inject(QuizService);
+  private readonly playerService = inject(PlayerService);
+  protected readonly quizService = inject(QuizService);
 
-  protected readonly r = computed(() => this.quiz.result()!);
-  protected readonly s = computed(() => this.quiz.session()!);
-  protected readonly verdict = computed(() => verdictFor(this.r().score, this.r().total));
-  protected readonly label = VERDICT_LABEL;
-  protected readonly cut = computed(() => cutoffs(this.r().total));
-  protected readonly accuracy = computed(() => {
-    const att = this.r().correct + this.r().wrong;
-    return att ? Math.round((this.r().correct * 100) / att) + '%' : '–';
+  // The route guard guarantees both exist on this screen.
+  protected readonly result = computed(() => this.quizService.result()!);
+  protected readonly session = computed(() => this.quizService.session()!);
+
+  protected readonly verdict = computed(() => verdictFor(this.result().score, this.result().totalQuestions));
+  protected readonly verdictLabels = VERDICT_LABELS;
+  protected readonly outcomeLabels = OUTCOME_LABELS;
+  protected readonly cutoffs = computed(() => cutoffsFor(this.result().totalQuestions));
+  protected readonly isFullPaper = computed(() => this.result().totalQuestions === 200);
+
+  /** Share of attempted questions answered correctly, e.g. "80%"; "–" if nothing was attempted. */
+  protected readonly accuracyText = computed(() => {
+    const { correctCount, wrongCount } = this.result();
+    const attemptedCount = correctCount + wrongCount;
+    return attemptedCount ? `${Math.round((correctCount * 100) / attemptedCount)}%` : '–';
   });
 
-  protected readonly filters: { id: Filter; label: string }[] = [
+  protected readonly reviewFilters: { id: ReviewFilter; label: string }[] = [
     { id: 'all', label: 'All' },
     { id: 'wrong', label: 'Wrong' },
     { id: 'skipped', label: 'Skipped' },
     { id: 'correct', label: 'Correct' },
   ];
-  protected readonly filter = signal<Filter>('all');
+  protected readonly selectedReviewFilter = signal<ReviewFilter>('all');
 
-  protected readonly review = computed(() => {
-    const { questions, saved } = this.s();
-    const f = this.filter();
+  /** Questions to list, after applying the chosen filter. */
+  protected readonly reviewItems = computed<ReviewItem[]>(() => {
+    const { questions, savedAnswers } = this.session();
+    const filter = this.selectedReviewFilter();
+
     return questions
-      .map((q, i) => {
-        const mine = saved[i];
-        const state: Exclude<Filter, 'all'> = !mine ? 'skipped' : mine === q.answer ? 'correct' : 'wrong';
-        return { q, mine, state };
+      .map((question, position) => {
+        const playerAnswer = savedAnswers[position];
+        const outcome: AnswerOutcome =
+          playerAnswer === NO_ANSWER ? 'skipped' : playerAnswer === question.correctOption ? 'correct' : 'wrong';
+        return { question, playerAnswer, outcome };
       })
-      .filter(x => f === 'all' || x.state === f);
+      .filter(item => filter === 'all' || item.outcome === filter);
   });
 
-  protected readonly saveText = computed(() => {
-    switch (this.quiz.saveStatus()) {
-      case 'saving': return 'Saving to the leaderboard…';
-      case 'saved': return 'Saved to the leaderboard.';
-      case 'kept-best': return 'Saved. Your earlier best in this section is still higher.';
-      case 'error': return 'Not saved: the leaderboard could not be reached.';
-      default: return '';
+  /** Message about saving to the leaderboard; empty before saving starts. */
+  protected readonly leaderboardSaveMessage = computed(() => {
+    switch (this.quizService.leaderboardSaveStatus()) {
+      case 'saving':
+        return 'Saving to the leaderboard…';
+      case 'saved':
+        return 'Saved to the leaderboard.';
+      case 'kept-best':
+        return 'Saved. Your earlier best in this section is still higher.';
+      case 'error':
+        return 'Not saved: the leaderboard could not be reached.';
+      default:
+        return '';
     }
   });
 
-  protected again(): void {
-    this.player.setStatus({ status: 'lobby', q: 0, total: 0, answered: 0 });
+  /** Back to the start screen to pick another test. */
+  protected takeAnotherTest(): void {
+    this.playerService.returnToLobby();
     void this.router.navigate(['/']);
   }
 }

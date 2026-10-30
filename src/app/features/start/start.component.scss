@@ -1,22 +1,28 @@
 :host { display: flex; flex-direction: column; gap: 20px; }
-.rules {
+
+/* Four rule tiles, each with a thick top rule like a ruled exam sheet. */
+.rule-summary {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;
-  div { border-top: 2px solid var(--ink); padding-top: 8px; }
-  b { font-family: var(--mono); font-size: 22px; display: block; }
-  span { font-size: 14px; color: var(--muted); }
+  div { border-top: 2px solid var(--color-ink); padding-top: 8px; }
+  b { font-family: var(--font-numbers); font-size: 22px; display: block; }
+  span { font-size: 14px; color: var(--color-muted); }
 }
-.name {
-  font-size: 18px; font-weight: 700; color: var(--ink); background: transparent; border: 0;
-  border-bottom: 2px solid var(--ink); padding: 8px 2px; width: 100%; max-width: 420px; border-radius: 0;
-  &:focus { outline: none; border-bottom-color: var(--omr); }
-  &::placeholder { color: var(--muted); font-weight: 500; }
+
+/* Name field styled as a single underline, like writing on a form. */
+.name-input {
+  font-size: 18px; font-weight: 700; color: var(--color-ink); background: transparent; border: 0;
+  border-bottom: 2px solid var(--color-ink); padding: 8px 2px; width: 100%; max-width: 420px; border-radius: 0;
+  &:focus { outline: none; border-bottom-color: var(--color-bubble); }
+  &::placeholder { color: var(--color-muted); font-weight: 500; }
 }
-.err { color: var(--bad); font-size: 14px; }
-.sections { display: grid; gap: 10px; }
-.sec {
+.error-text { color: var(--color-wrong); font-size: 14px; }
+
+/* Section buttons: name and question range on the left, length and duration on the right. */
+.section-choices { display: grid; gap: 10px; }
+.section-choice {
   display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; text-align: left;
-  background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px;
-  color: var(--ink); cursor: pointer; font-size: 16px; font-weight: 700;
-  small { font-family: var(--mono); font-weight: 500; color: var(--muted); font-size: 13px; white-space: nowrap; }
-  &:hover, &:focus-visible { border-color: var(--omr); outline: none; background: var(--omr-soft); }
+  background: transparent; border: 1px solid var(--color-rule); border-radius: 8px; padding: 14px 16px;
+  color: var(--color-ink); cursor: pointer; font-size: 16px; font-weight: 700;
+  small { font-family: var(--font-numbers); font-weight: 500; color: var(--color-muted); font-size: 13px; white-space: nowrap; }
+  &:hover, &:focus-visible { border-color: var(--color-bubble); outline: none; background: var(--color-bubble-soft); }
 }
