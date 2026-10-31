@@ -1,14 +1,16 @@
 <section class="sheet" style="gap:16px">
-  <span class="lbl">{{ session().section.name }} · Q{{ session().section.from }}–{{ session().section.to }}</span>
+  <span class="lbl">{{ session().test.label }}</span>
   <div class="score"><b>{{ result().score }}</b><span>/ {{ result().total * 2 }}</span></div>
-  <div><span class="verdict" [class]="verdict()">{{ verdictLabel[verdict()] }}</span></div>
-  <p class="note">
-    @if (result().total === 200) {
-      Above 60 is Qualified; above 150 is Well done.
-    } @else {
-      Cut-offs scaled for {{ result().total }} questions: above {{ scaledCutoffs().qualify }} is Qualified, above {{ scaledCutoffs().wellDone }} is Well done.
-    }
-  </p>
+  @if (session().test.hasVerdict) {
+    <div><span class="verdict" [class]="verdict()">{{ verdictLabel[verdict()] }}</span></div>
+    <p class="note">
+      @if (result().total === 200) {
+        Above 60 is Qualified; above 150 is Well done.
+      } @else {
+        Cut-offs scaled for {{ result().total }} questions: above {{ scaledCutoffs().qualify }} is Qualified, above {{ scaledCutoffs().wellDone }} is Well done.
+      }
+    </p>
+  }
   <div class="stats">
     <div><b>{{ result().correct }}</b><span>Correct (+2 each)</span></div>
     <div><b>{{ result().wrong }}</b><span>Wrong (−0.2 each)</span></div>
@@ -21,7 +23,9 @@
   </div>
 </section>
 
-<app-leaderboard [section]="session().section.id" />
+@if (session().test.hasVerdict) {
+  <app-leaderboard [section]="$any(session().test.id)" />
+}
 
 <section class="sheet">
   <h2>Answers &amp; explanations</h2>
