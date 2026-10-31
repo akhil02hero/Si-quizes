@@ -1,48 +1,30 @@
 :host { display: flex; flex-direction: column; gap: 20px; }
-
-/* Large score with "/ max" beside it. */
-.score-line {
+.score {
   display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
-  b { font-family: var(--font-numbers); font-size: clamp(44px, 10vw, 64px); line-height: 1; }
-  span { font-family: var(--font-numbers); color: var(--color-muted); }
+  b { font-family: var(--mono); font-size: clamp(44px, 10vw, 64px); line-height: 1; }
+  span { font-family: var(--mono); color: var(--muted); }
 }
-
-/* Verdict pill under the score. */
 .verdict {
-  display: inline-block; font: 800 14px var(--font-display); letter-spacing: .08em; text-transform: uppercase; padding: 6px 12px; border-radius: 999px;
-  &.well-done { background: var(--color-correct); color: var(--color-card); }
-  &.qualified { background: var(--color-correct-soft); color: var(--color-correct); }
-  &.not-qualified { background: var(--color-wrong-soft); color: var(--color-wrong); }
+  display: inline-block; font: 800 14px var(--display); letter-spacing: .08em; text-transform: uppercase; padding: 6px 12px; border-radius: 999px;
+  &.well-done { background: var(--ok); color: var(--sheet); }
+  &.qualified { background: var(--ok-soft); color: var(--ok); }
+  &.not-qualified { background: var(--bad-soft); color: var(--bad); }
 }
-
-/* Correct / wrong / skipped / accuracy tiles. */
-.score-breakdown {
+.stats {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px;
-  div { border-top: 2px solid var(--color-rule); padding-top: 6px; }
-  b { font-family: var(--font-numbers); font-size: 22px; display: block; font-variant-numeric: tabular-nums; }
-  span { font-size: 13px; color: var(--color-muted); }
+  div { border-top: 2px solid var(--line); padding-top: 6px; }
+  b { font-family: var(--mono); font-size: 22px; display: block; font-variant-numeric: tabular-nums; }
+  span { font-size: 13px; color: var(--muted); }
 }
-
-/* Review list: question number on the left, everything else on the right. */
-.answer-review {
-  list-style: none; margin: 0; padding: 0;
-  > li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; padding: 14px 0; border-top: 1px solid var(--color-rule); }
-}
-.question-number { font-family: var(--font-numbers); font-weight: 700; }
-.review-body { display: flex; flex-direction: column; gap: 6px; overflow-wrap: anywhere; img { background: #fff; border-radius: 4px; } }
-
-.review-options {
+.review { list-style: none; margin: 0; padding: 0; > li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; padding: 14px 0; border-top: 1px solid var(--line); } }
+.n { font-family: var(--mono); font-weight: 700; }
+.body { display: flex; flex-direction: column; gap: 6px; overflow-wrap: anywhere; img { background: #fff; border-radius: 4px; } }
+.ropts {
   list-style: none; margin: 0; padding: 0; font-size: 15px;
   li { padding: 2px 8px; border-radius: 4px; }
-  span { font: 700 12px var(--font-display); margin-left: 6px; }
-  .is-correct-option { background: var(--color-correct-soft); color: var(--color-correct); font-weight: 600; }
-  .is-wrong-pick { background: var(--color-wrong-soft); color: var(--color-wrong); }
+  span { font: 700 12px var(--display); margin-left: 6px; }
+  .ans { background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .mine { background: var(--bad-soft); color: var(--bad); }
 }
-
-.outcome {
-  font: 700 13px var(--font-display);
-  &.correct { color: var(--color-correct); }
-  &.wrong { color: var(--color-wrong); }
-  &.skipped { color: var(--color-warning); }
-}
-.explanation { font-size: 14px; color: var(--color-muted); }
+.state { font: 700 13px var(--display); &.correct { color: var(--ok); } &.wrong { color: var(--bad); } &.skipped { color: var(--warn); } }
+.ex { font-size: 14px; color: var(--muted); }

@@ -1,51 +1,30 @@
 :host { display: flex; flex-direction: column; gap: 14px; }
-
-/* Top bar: position on the left, saved count in the middle, countdown on the right. */
-.status-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-.position { font-family: var(--font-numbers); font-weight: 700; font-size: 15px; }
-.saved-count { font-family: var(--font-numbers); font-size: 13px; color: var(--color-muted); b { color: var(--color-ink); } }
-.countdown {
-  font-family: var(--font-numbers); font-weight: 700; font-size: 22px; font-variant-numeric: tabular-nums; min-width: 3ch; text-align: right;
-  &.is-low { color: var(--color-wrong); }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.qno { font-family: var(--mono); font-weight: 700; font-size: 15px; }
+.stats { font-family: var(--mono); font-size: 13px; color: var(--muted); b { color: var(--ink); } }
+.timer {
+  font-family: var(--mono); font-weight: 700; font-size: 22px; font-variant-numeric: tabular-nums; min-width: 5ch; text-align: right;
+  &.low { color: var(--bad); }
 }
-
-/* Thin bar that shrinks from the right as time runs out. */
-.time-bar {
-  height: 6px; background: var(--color-rule); border-radius: 3px; overflow: hidden;
-  i { display: block; height: 100%; background: var(--color-ink); transform-origin: left; transition: transform .25s linear; }
-  &.is-low i { background: var(--color-wrong); }
+.fuse {
+  height: 6px; background: var(--line); border-radius: 3px; overflow: hidden;
+  i { display: block; height: 100%; background: var(--ink); transform-origin: left; transition: transform .25s linear; }
+  &.low i { background: var(--bad); }
 }
-
-.question-text { font-size: 19px; line-height: 1.5; overflow-wrap: anywhere; }
-
-/* Diagrams always sit on white, since they are scans of a printed page. */
-.figure { background: #fff; border: 1px solid var(--color-rule); border-radius: 6px; padding: 8px; overflow-x: auto; img { display: block; margin: 0 auto; } }
-
-/* Each option: a numbered OMR bubble followed by the option text. */
-.options { display: grid; gap: 10px; }
-.option {
-  display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; background: transparent; color: var(--color-ink);
-  border: 1px solid var(--color-rule); border-radius: 8px; padding: 12px 14px; font: 17px var(--font-body); cursor: pointer;
-  .bubble {
-    flex: none; width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--color-bubble); color: var(--color-bubble);
-    display: grid; place-items: center; font: 700 14px var(--font-numbers);
+.qtext { font-size: 19px; line-height: 1.5; overflow-wrap: anywhere; }
+.figure { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 8px; overflow-x: auto; img { display: block; margin: 0 auto; } }
+.opts { display: grid; gap: 10px; }
+.opt {
+  display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; background: transparent; color: var(--ink);
+  border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; font: 17px var(--body); cursor: pointer;
+  .bub {
+    flex: none; width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--omr); color: var(--omr);
+    display: grid; place-items: center; font: 700 14px var(--mono);
   }
-  .option-text { min-width: 0; overflow-wrap: anywhere; }
-  &:hover:not(:disabled), &:focus-visible { border-color: var(--color-bubble); outline: none; }
+  .t { min-width: 0; overflow-wrap: anywhere; }
+  &:hover:not(:disabled), &:focus-visible { border-color: var(--omr); outline: none; }
   &:disabled { cursor: default; opacity: .7; }
-  /* Selected option: the bubble is "filled in", like shading an OMR sheet. */
-  &.is-selected {
-    border-color: var(--color-bubble); background: var(--color-bubble-soft);
-    .bubble { background: var(--color-bubble); color: var(--color-card); }
-  }
+  &.sel { border-color: var(--omr); background: var(--omr-soft); .bub { background: var(--omr); color: var(--sheet); } }
 }
-
-/* Status line: green when saved, amber when there's an unsaved change. */
-.answer-status {
-  font-size: 14px; color: var(--color-muted); min-height: 1.4em;
-  &.saved { color: var(--color-correct); }
-  &.unsaved { color: var(--color-warning); }
-}
-
-/* Previous on the left, Clear and Save on the right. */
-.navigation { justify-content: space-between; }
+.qstate { font-size: 14px; color: var(--muted); min-height: 1.4em; &.saved { color: var(--ok); } &.unsaved { color: var(--warn); } }
+.spread { justify-content: space-between; }

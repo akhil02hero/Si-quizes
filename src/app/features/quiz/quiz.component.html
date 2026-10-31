@@ -1,66 +1,49 @@
-@if (quizService.session(); as session) {
-  @let question = quizService.currentQuestion()!;
-
-  <!-- Top bar: who and where, how many saved, seconds left -->
-  <div class="status-bar">
-    <span class="position">{{ playerName() }} · Q{{ question.number }} · {{ session.currentIndex + 1 }} of {{ session.questions.length }}</span>
-    <span class="saved-count">Saved <b>{{ quizService.savedAnswerCount() }}</b>/<b>{{ session.questions.length }}</b></span>
-    <span class="countdown" [class.is-low]="isTimeRunningLow()">{{ quizService.secondsLeft() }}</span>
+@if (quiz.session(); as session) {
+  @let question = quiz.question()!;
+  <div class="top">
+    <span class="qno">{{ playerName() }} · Q{{ question.number }} · {{ session.index + 1 }} of {{ session.questions.length }}</span>
+    <span class="stats">Saved <b>{{ quiz.savedCount() }}</b>/<b>{{ session.questions.length }}</b></span>
+    <span class="timer" [class.low]="isLowOnTime()" aria-label="Time left">{{ timeLeftText() }}</span>
   </div>
-
-  <!-- Time bar: shrinks from full width to nothing over 50 s -->
-  <div class="time-bar" [class.is-low]="isTimeRunningLow()" role="progressbar" aria-label="Time left"
-       [attr.aria-valuenow]="quizService.secondsLeft()" aria-valuemin="0" [attr.aria-valuemax]="secondsPerQuestion">
+  <div class="fuse" [class.low]="isLowOnTime()" role="progressbar" aria-label="Time left"
+       [attr.aria-valuenow]="quiz.secondsLeft()" aria-valuemin="0" [attr.aria-valuemax]="totalSeconds()">
     <i [style.transform]="'scaleX(' + timeLeftFraction() + ')'"></i>
   </div>
 
-  <section class="card">
-    <span class="section-label">{{ subjectOfQuestion(question.number) }}</span>
-    <p class="question-text">{{ question.text }}</p>
-
-    @if (question.figureImagePath) {
+  <section class="sheet">
+    <span class="lbl">{{ sectionOf(question.number) }}</span>
+    <p class="qtext">{{ question.text }}</p>
+    @if (question.figure) {
       <div class="figure">
-        <img [src]="question.figureImagePath" alt="Figure for question {{ question.number }}">
+        <img [src]="question.figure" alt="Figure for question {{ question.number }}">
       </div>
     }
-
-    <!-- Options: a numbered bubble per option. Locked once time is up. -->
-    <div class="options" role="radiogroup" aria-label="Options">
-      @for (optionText of question.options; track $index) {
-        @let optionNumber = $index + 1;
-        <button class="option" type="button" role="radio"
-                [class.is-selected]="quizService.selectedOption() === optionNumber"
-                [attr.aria-checked]="quizService.selectedOption() === optionNumber"
-                [disabled]="quizService.isTimeUp()"
-                (click)="quizService.selectOption(optionNumber)">
-          <span class="bubble">{{ optionNumber }}</span><span class="option-text">{{ optionText }}</span>
+    <div class="opts" role="radiogroup" aria-label="Options">
+      @for (option of question.options; track $index) {
+        <button class="opt" type="button" role="radio"
+                [class.sel]="quiz.selected() === $index + 1"
+                [attr.aria-checked]="quiz.selected() === $index + 1"
+                (click)="quiz.select($index + 1)">
+          <span class="bub">{{ $index + 1 }}</span><span class="t">{{ option }}</span>
         </button>
       }
     </div>
-
-    <p class="answer-status" [class]="answerStatus().tone" aria-live="polite">{{ answerStatus().message }}</p>
+    <p class="qstate" [class]="status().kind" aria-live="polite">{{ status().text }}</p>
   </section>
 
-  <!-- Navigation -->
-  <div class="button-row navigation">
-    <button class="button button-secondary" type="button" [disabled]="quizService.isFirstQuestion()"
-            (click)="quizService.goToPreviousQuestion()">← Previous</button>
-    <div class="button-row">
-      <button class="button button-secondary" type="button"
-              [disabled]="quizService.isTimeUp() || !quizService.selectedOption()"
-              (click)="quizService.clearAnswer()">Clear</button>
-      <button class="button" type="button" [disabled]="quizService.isTimeUp() && quizService.isLastQuestion()"
-              (click)="quizService.saveAndNext()">
-        {{ quizService.isLastQuestion() ? 'Save' : 'Save & Next' }}
+  <div class="actions spread">
+    <button class="btn ghost" type="button" [disabled]="quiz.isFirst()" (click)="quiz.previous()">← Previous</button>
+    <div class="actions">
+      <button class="btn ghost" type="button" [disabled]="!quiz.selected()" (click)="quiz.clear()">Clear</button>
+      <button class="btn" type="button" (click)="quiz.saveAndNext()">
+        {{ quiz.isLast() ? 'Save' : 'Save & Next' }}
       </button>
     </div>
   </div>
-
-  <!-- Submit: first tap asks to confirm, second tap ends the test -->
-  <div class="button-row" style="justify-content:flex-start">
-    <button class="button button-danger" type="button" (click)="onSubmitClick()">
-      @if (isConfirmingSubmit()) {
-        {{ unansweredCount() ? unansweredCount() + ' unanswered. Tap again to submit' : 'Tap again to submit' }}
+  <div class="actions" style="justify-content:flex-start">
+    <button class="btn danger" type="button" (click)="submit()">
+      @if (confirming()) {
+        {{ unanswered() ? unanswered() + ' unanswered. Tap again to submit' : 'Tap again to submit' }}
       } @else {
         Submit test
       }

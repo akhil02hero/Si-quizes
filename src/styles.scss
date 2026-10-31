@@ -1,61 +1,27 @@
-/*
- * Global styles shared by every screen.
- * Look: an exam answer sheet. Navy ink on cool paper, pink OMR-style answer
- * bubbles, and a monospaced face for numbers. Every colour is a CSS variable
- * so light and dark mode only swap the variable values.
- */
-
-/* ---- Colour and font tokens (light mode) ---- */
+/* Exam-sheet look: navy ink on cool paper, OMR-pink bubbles, mono figures. */
 :root {
-  --color-page: #f3f4f7;          /* page background */
-  --color-card: #fff;             /* card / answer-sheet background */
-  --color-ink: #16233f;           /* main text */
-  --color-muted: #5b6478;         /* secondary text */
-  --color-rule: #d9dce4;          /* borders and dividers */
-  --color-bubble: #c7365f;        /* OMR bubble pink: selection and focus */
-  --color-bubble-soft: #fbe7ec;   /* tinted background for selected items */
-  --color-correct: #1e7a4c;
-  --color-correct-soft: #e3f3ea;
-  --color-wrong: #b42318;
-  --color-wrong-soft: #fce9e7;
-  --color-warning: #b26a00;       /* unsaved changes, skipped questions */
-
-  --font-display: "Archivo", system-ui, sans-serif;     /* headings, labels, buttons */
-  --font-body: "Source Serif 4", Georgia, serif;        /* question text and paragraphs */
-  --font-numbers: "JetBrains Mono", ui-monospace, monospace; /* scores, timers, counts */
+  --bg: #f3f4f7; --sheet: #fff; --ink: #16233f; --muted: #5b6478; --line: #d9dce4;
+  --omr: #c7365f; --omr-soft: #fbe7ec; --ok: #1e7a4c; --ok-soft: #e3f3ea;
+  --bad: #b42318; --bad-soft: #fce9e7; --warn: #b26a00;
+  --display: "Archivo", system-ui, sans-serif;
+  --body: "Source Serif 4", Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
   color-scheme: light;
 }
-
-/* ---- Dark mode: same tokens, darker values ---- */
-@mixin dark-colors {
-  --color-page: #0f1420;
-  --color-card: #171e2e;
-  --color-ink: #e6e9f0;
-  --color-muted: #9aa3b6;
-  --color-rule: #2a3347;
-  --color-bubble: #f0708f;
-  --color-bubble-soft: #3a1f2a;
-  --color-correct: #5bc98e;
-  --color-correct-soft: #173226;
-  --color-wrong: #f38b7f;
-  --color-wrong-soft: #3a1d1a;
-  --color-warning: #e8a23b;
+@mixin dark {
+  --bg: #0f1420; --sheet: #171e2e; --ink: #e6e9f0; --muted: #9aa3b6; --line: #2a3347;
+  --omr: #f0708f; --omr-soft: #3a1f2a; --ok: #5bc98e; --ok-soft: #173226;
+  --bad: #f38b7f; --bad-soft: #3a1d1a; --warn: #e8a23b;
   color-scheme: dark;
 }
-/* Follow the device setting unless the page is forced to light... */
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { @include dark-colors; } }
-/* ...or explicitly forced to dark. */
-:root[data-theme="dark"] { @include dark-colors; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { @include dark; } }
+:root[data-theme="dark"] { @include dark; }
 
-/* ---- Page basics ---- */
 *, *::before, *::after { box-sizing: border-box; }
-/* Keep content clear of phone notches and home bars. */
 html { padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0); }
 body {
-  margin: 0;
-  background: var(--color-page);
-  color: var(--color-ink);
-  font: 17px/1.55 var(--font-body);
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 17px/1.55 var(--body);
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: 24px 48px;
@@ -63,53 +29,37 @@ body {
 img { max-width: 100%; }
 [hidden] { display: none !important; }
 p { margin: 0; }
-h1, h2, .section-label, button, input { font-family: var(--font-display); }
+h1, h2, .lbl, button, input { font-family: var(--display); }
 h1 { font-size: clamp(26px, 5vw, 38px); line-height: 1.1; margin: 0; font-weight: 800; letter-spacing: -.01em; text-wrap: balance; }
 h2 { font-size: 20px; margin: 0; }
 
-/* ---- Layout helpers ---- */
-/* Centred column that holds every screen (set in app.ts). */
-.page-column { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
-.vertical-stack { display: flex; flex-direction: column; gap: 14px; }
+.wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.stack { display: flex; flex-direction: column; gap: 14px; }
+.lbl { font-size: 12px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.note { font-size: 14px; color: var(--muted); }
+.sheet { background: var(--sheet); border: 1px solid var(--line); border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
 
-/* Small uppercase label above a block, e.g. "YOUR NAME". */
-.section-label { font-size: 12px; letter-spacing: .09em; text-transform: uppercase; color: var(--color-muted); font-weight: 700; }
-/* Secondary explanatory text. */
-.hint-text { font-size: 14px; color: var(--color-muted); }
-/* White panel with a thin border, like a sheet of paper. */
-.card { background: var(--color-card); border: 1px solid var(--color-rule); border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
-
-/* ---- Buttons ---- */
-.button {
-  border: 1px solid var(--color-ink); background: var(--color-ink); color: var(--color-card);
+.btn {
+  border: 1px solid var(--ink); background: var(--ink); color: var(--sheet);
   border-radius: 8px; padding: 11px 20px; font-size: 15px; font-weight: 700; cursor: pointer;
-  /* Outline style for less important actions. */
-  &.button-secondary { background: transparent; color: var(--color-ink); border-color: var(--color-rule); }
-  /* Red outline for ending the test. */
-  &.button-danger { background: transparent; color: var(--color-wrong); border-color: var(--color-wrong); }
+  &.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+  &.danger { background: transparent; color: var(--bad); border-color: var(--bad); }
   &:disabled { opacity: .4; cursor: default; }
-  &:focus-visible { outline: 3px solid var(--color-bubble); outline-offset: 2px; }
+  &:focus-visible { outline: 3px solid var(--omr); outline-offset: 2px; }
 }
-/* Row of buttons, right-aligned by default, wrapping on narrow screens. */
-.button-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
-
-/* ---- Pill-shaped toggle buttons (section tabs, answer filters) ---- */
-.pill-group { display: flex; gap: 8px; flex-wrap: wrap; }
-.pill {
-  border: 1px solid var(--color-rule); background: transparent; color: var(--color-ink);
+.actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  border: 1px solid var(--line); background: transparent; color: var(--ink);
   border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
-  &[aria-pressed="true"] { background: var(--color-ink); color: var(--color-card); border-color: var(--color-ink); }
-  &:focus-visible { outline: 3px solid var(--color-bubble); outline-offset: 2px; }
+  &[aria-pressed="true"] { background: var(--ink); color: var(--sheet); border-color: var(--ink); }
+  &:focus-visible { outline: 3px solid var(--omr); outline-offset: 2px; }
 }
-
-/* ---- Verdict badge next to a name on the leaderboard ---- */
-.verdict-badge {
-  display: inline-block; font-family: var(--font-display); font-size: 11px; font-weight: 800; letter-spacing: .06em;
+.tag {
+  display: inline-block; font-family: var(--display); font-size: 11px; font-weight: 800; letter-spacing: .06em;
   text-transform: uppercase; padding: 2px 7px; border-radius: 999px; margin-left: 6px; vertical-align: 2px;
-  &.well-done { background: var(--color-correct); color: var(--color-card); }
-  &.qualified { background: var(--color-correct-soft); color: var(--color-correct); }
-  &.not-qualified { background: var(--color-wrong-soft); color: var(--color-wrong); }
+  &.well-done { background: var(--ok); color: var(--sheet); }
+  &.qualified { background: var(--ok-soft); color: var(--ok); }
+  &.not-qualified { background: var(--bad-soft); color: var(--bad); }
 }
-
-/* Respect the "reduce motion" accessibility setting. */
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

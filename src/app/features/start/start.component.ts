@@ -1,22 +1,13 @@
 import { Component, inject } from '@angular/core';
 import { AbstractControl, FormControl, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
-import { MAX_PLAYER_NAME_LENGTH, PlayerService } from '../../core/player.service';
+import { PlayerService } from '../../core/player.service';
 import { QuizService } from '../../core/quiz.service';
-import { SECTIONS, Section, questionCountOf } from '../../core/models';
-import { SECONDS_PER_QUESTION } from '../../core/scoring';
+import { SECTIONS, Section } from '../../core/models';
 import { LeaderboardComponent } from '../../shared/leaderboard.component';
 import { LivePlayersComponent } from '../../shared/live-players.component';
 
-/** Validator: fails when the name is only spaces (Validators.required lets "   " through). */
-function notOnlySpaces(control: AbstractControl): ValidationErrors | null {
-  const hasVisibleText = String(control.value ?? '').trim().length > 0;
-  return hasVisibleText ? null : { onlySpaces: true };
-}
+const notBlank = (control: AbstractControl): ValidationErrors | null => (String(control.value ?? '').trim() ? null : { blank: true });
 
-/**
- * Start screen: the exam rules, the player's name, a button per section,
- * "Playing now" and the leaderboard.
- */
 @Component({
   selector: 'app-start',
   imports: [ReactiveFormsModule, LeaderboardComponent, LivePlayersComponent],
@@ -24,36 +15,27 @@ function notOnlySpaces(control: AbstractControl): ValidationErrors | null {
   styleUrl: './start.component.scss',
 })
 export class StartComponent {
-  private readonly playerService = inject(PlayerService);
-  private readonly quizService = inject(QuizService);
+  private readonly player = inject(PlayerService);
+  private readonly quiz = inject(QuizService);
 
   protected readonly sections = SECTIONS;
-  protected readonly questionCountOf = questionCountOf;
-  protected readonly maxNameLength = MAX_PLAYER_NAME_LENGTH;
-
-  /** The name field, pre-filled with the name used last time on this device. */
-  protected readonly playerNameControl = new FormControl(this.playerService.playerName(), {
+  protected readonly name = new FormControl(this.player.name(), {
     nonNullable: true,
-    validators: [Validators.required, Validators.maxLength(MAX_PLAYER_NAME_LENGTH), notOnlySpaces],
+    validators: [Validators.required, Validators.maxLength(24), notBlank],
   });
 
-  /** Total time for a section at 50 s per question, e.g. "41 min" or "2 h 46 min". */
-  protected formatDuration(section: Section): string {
-    const totalMinutes = Math.floor((questionCountOf(section) * SECONDS_PER_QUESTION) / 60);
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    return hours > 0 ? `${hours} h ${minutes} min` : `${minutes} min`;
+  protected duration(section: Section): string {
+    const minutes = section.minutes;
+    return minutes >= 60 ? `${Math.floor(minutes / 60)} h ${minutes % 60} min` : `${minutes} min`;
   }
 
-  /** Starts a test, but only once a name has been entered (it goes on the leaderboard). */
-  protected startTest(section: Section): void {
-    if (this.playerNameControl.invalid) {
-      // Show the error and put the cursor in the name box.
-      this.playerNameControl.markAsTouched();
+  protected begin(section: Section): void {
+    if (this.name.invalid) {
+      this.name.markAsTouched();
       document.getElementById('player-name')?.focus();
       return;
     }
-    this.playerService.setPlayerName(this.playerNameControl.value);
-    this.quizService.start(section);
+    this.player.setName(this.name.value);
+    this.quiz.start(section);
   }
 }
