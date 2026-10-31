@@ -52,7 +52,6 @@ export class ResultComponent {
     switch (this.quiz.saveStatus()) {
       case 'saving': return 'Saving to the leaderboard…';
       case 'saved': return 'Saved to the leaderboard.';
-      case 'kept-best': return 'Saved. Your earlier best in this section is still higher.';
       case 'error': return 'Not saved: the leaderboard could not be reached.';
       default: return '';
     }
@@ -60,6 +59,6 @@ export class ResultComponent {
 
   protected startAgain(): void {
     this.player.setStatus({ status: 'lobby', questionNumber: 0, total: 0, answered: 0 });
-    void this.router.navigate(['/']);
+    void this.router.navigateByUrl(this.session().test.returnPath);
   }
 }

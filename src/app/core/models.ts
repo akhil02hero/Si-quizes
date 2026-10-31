@@ -28,6 +28,11 @@ export const SECTIONS: readonly Section[] = [
   { id: 'gs', name: 'General studies & Telangana', shortName: 'GS', from: 101, to: 200, minutes: 50 },
 ];
 
+/** How an SI paper section is named on the result page and leaderboard. */
+export function paperLabel(section: Section): string {
+  return `SI Prelims 2022 · ${section.name} · Q${section.from}–${section.to}`;
+}
+
 export function sectionOf(questionNumber: number): string {
   return questionNumber <= 50 ? 'Arithmetic' : questionNumber <= 100 ? 'Reasoning & mental ability' : 'General studies';
 }
@@ -43,6 +48,8 @@ export interface QuizTest {
   seconds: number;
   /** Show the Qualified / Well done verdict (SI paper only). */
   hasVerdict: boolean;
+  /** Where "back" goes from the result page: '/' for the SI paper, the chapter page for practice. */
+  returnPath: string;
   /** Heading above each question; without it the SI paper's section name is shown. */
   topic?: string;
 }
@@ -57,10 +64,17 @@ export interface Result {
   at: number;
 }
 
+/** A finished test as kept on the leaderboard: the result plus which test it was. */
+export interface Attempt extends Result {
+  testId: string;
+  testLabel: string;
+}
+
 export interface LeaderboardEntry {
   playerId: string;
   name: string;
-  best: Partial<Record<SectionId, Result>>;
+  /** The player's most recent attempt, at any test. */
+  last: Attempt;
   attempts: number;
 }
 

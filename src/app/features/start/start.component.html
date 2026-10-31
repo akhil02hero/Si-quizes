@@ -35,5 +35,18 @@
   </p>
 </section>
 
+<section class="sheet">
+  <span class="lbl">Practice by subject</span>
+  <div class="sections">
+    @for (category of categories; track category.id) {
+      <button class="sec" type="button" (click)="openCategory(category)">
+        <span>{{ category.name }}</span>
+        <small>{{ category.chapters.length }} chapters · {{ questionCount(category) }} Qs</small>
+      </button>
+    }
+  </div>
+  <p class="note">Chapter-wise tests of up to 50 questions, 45 seconds per question.</p>
+</section>
+
 <app-live-players />
 <app-leaderboard />

@@ -22,6 +22,16 @@ export function findChapter(categoryId: string, chapterId: string): PracticeChap
   return findCategory(categoryId)?.chapters.find((chapter) => chapter.id === chapterId);
 }
 
+/** Test length as words, e.g. 2250 -> '37 min 30 s', 4200 -> '1 h 10 min'. */
+export function formatDuration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const rest = seconds % 60;
+  return [hours && `${hours} h`, minutes && `${minutes} min`, rest && `${rest} s`]
+    .filter(Boolean)
+    .join(' ');
+}
+
 /** A chapter split into tests of TEST_SIZE questions in book order; the last test takes the remainder. */
 export function testsOf(chapter: PracticeChapter): PracticeTestInfo[] {
   const tests: PracticeTestInfo[] = [];
@@ -57,6 +67,7 @@ export async function loadPracticeTest(
     questions: chapterQuestions.slice(test.from - 1, test.to),
     seconds: test.seconds,
     hasVerdict: false,
+    returnPath: `/practice/${category.id}/${chapter.id}`,
     topic: `${category.name} · ${chapter.name}`,
   };
 }

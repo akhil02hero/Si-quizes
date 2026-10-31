@@ -1,6 +1,6 @@
 import { Injectable, OnDestroy, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Question, QuizTest, Result, SectionId } from './models';
+import { Question, QuizTest, Result } from './models';
 import { scoreAnswers } from './scoring';
 import { PlayerService } from './player.service';
 import { LeaderboardService } from './leaderboard.service';
@@ -19,11 +19,8 @@ export interface Session {
   secondsLeft: number;
 }
 
-/**
- * Progress of sending the result to the leaderboard.
- * 'kept-best' means the upload worked but an earlier, better score was kept.
- */
-export type SaveStatus = 'idle' | 'saving' | 'saved' | 'kept-best' | 'error' | 'offline';
+/** Progress of sending the result to the leaderboard. */
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'offline';
 
 /** Holds one test attempt: navigation, the test timer, saved answers and the final result. */
 @Injectable({ providedIn: 'root' })
@@ -120,8 +117,7 @@ export class QuizService implements OnDestroy {
       answered: this.savedCount(),
     });
     void this.router.navigate(['/result']);
-    // Practice tests reach the leaderboard once it shows every kind of test (phase 4).
-    if (session.test.hasVerdict) void this.persist(session.test.id as SectionId, result);
+    void this.persist(session.test, result);
   }
 
   /** Leave a question: an unsaved change is dropped and the saved answer shows again on return. */
@@ -175,11 +171,11 @@ export class QuizService implements OnDestroy {
   }
 
   /** Upload the result to the leaderboard and reflect the outcome in saveStatus. */
-  private async persist(section: SectionId, result: Result): Promise<void> {
+  private async persist(test: QuizTest, result: Result): Promise<void> {
     this.saveStatus.set('saving');
     try {
-      const outcome = await this.board.submit(section, result);
-      this.saveStatus.set(outcome === 'improved' ? 'saved' : 'kept-best');
+      await this.board.submit(test, result);
+      this.saveStatus.set('saved');
     } catch {
       this.saveStatus.set('error');
     }

@@ -12,11 +12,3 @@
   &::placeholder { color: var(--muted); font-weight: 500; }
 }
 .err { color: var(--bad); font-size: 14px; }
-.sections { display: grid; gap: 10px; }
-.sec {
-  display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; text-align: left;
-  background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px;
-  color: var(--ink); cursor: pointer; font-size: 16px; font-weight: 700;
-  small { font-family: var(--mono); font-weight: 500; color: var(--muted); font-size: 13px; white-space: nowrap; }
-  &:hover, &:focus-visible { border-color: var(--omr); outline: none; background: var(--omr-soft); }
-}
