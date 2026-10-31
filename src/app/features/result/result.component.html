@@ -19,7 +19,7 @@
   </div>
   @if (saveText()) { <p class="note">{{ saveText() }}</p> }
   <div class="actions" style="justify-content:flex-start">
-    <button class="btn" type="button" (click)="startAgain()">Take another test</button>
+    <button class="btn" type="button" (click)="startAgain()">{{ session().test.hasVerdict ? 'Take another test' : 'Back to chapter' }}</button>
   </div>
 </section>
 
@@ -28,7 +28,7 @@
 }
 
 <section class="sheet">
-  <h2>Answers &amp; explanations</h2>
+  <h2>@if (session().test.hasVerdict) { Answers &amp; explanations } @else { Answers }</h2>
   <div class="chips" role="group" aria-label="Filter answers">
     @for (filterOption of filters; track filterOption.id) {
       <button class="chip" type="button" [attr.aria-pressed]="filter() === filterOption.id" (click)="filter.set(filterOption.id)">{{ filterOption.label }}</button>

@@ -9,5 +9,6 @@ export function paperTest(section: Section): QuizTest {
     questions: QUESTIONS.filter(question => question.number >= section.from && question.number <= section.to),
     seconds: section.minutes * 60,
     hasVerdict: true,
+    returnPath: '/',
   };
 }

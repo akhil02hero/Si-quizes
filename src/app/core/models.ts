@@ -43,6 +43,8 @@ export interface QuizTest {
   seconds: number;
   /** Show the Qualified / Well done verdict (SI paper only). */
   hasVerdict: boolean;
+  /** Where "back" goes from the result page: '/' for the SI paper, the chapter page for practice. */
+  returnPath: string;
   /** Heading above each question; without it the SI paper's section name is shown. */
   topic?: string;
 }

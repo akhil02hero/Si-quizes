@@ -60,6 +60,6 @@ export class ResultComponent {
 
   protected startAgain(): void {
     this.player.setStatus({ status: 'lobby', questionNumber: 0, total: 0, answered: 0 });
-    void this.router.navigate(['/']);
+    void this.router.navigateByUrl(this.session().test.returnPath);
   }
 }

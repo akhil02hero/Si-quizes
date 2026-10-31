@@ -47,6 +47,16 @@ h2 { font-size: 20px; margin: 0; }
   &:disabled { opacity: .4; cursor: default; }
   &:focus-visible { outline: 3px solid var(--omr); outline-offset: 2px; }
 }
+.sections { display: grid; gap: 10px; }
+.sec {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; text-align: left;
+  background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px;
+  color: var(--ink); cursor: pointer; font-size: 16px; font-weight: 700; text-decoration: none;
+  small { font-family: var(--mono); font-weight: 500; color: var(--muted); font-size: 13px; white-space: nowrap; }
+  &:disabled { cursor: wait; opacity: .6; }
+  &:hover:not(:disabled), &:focus-visible { border-color: var(--omr); outline: none; background: var(--omr-soft); }
+}
+.back { align-self: flex-start; font: 700 14px var(--display); color: var(--muted); text-decoration: none; &:hover { color: var(--ink); } }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .chip {
