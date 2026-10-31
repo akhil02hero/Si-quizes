@@ -23,9 +23,7 @@
   </div>
 </section>
 
-@if (session().test.hasVerdict) {
-  <app-leaderboard [section]="$any(session().test.id)" />
-}
+<app-leaderboard />
 
 <section class="sheet">
   <h2>@if (session().test.hasVerdict) { Answers &amp; explanations } @else { Answers }</h2>

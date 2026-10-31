@@ -1,14 +1,8 @@
 import { Injectable, OnDestroy, computed, inject, signal } from '@angular/core';
-import { LeaderboardEntry, LivePlayer, Result, SectionId } from './models';
+import { LeaderboardEntry, LivePlayer, QuizTest, Result } from './models';
 import { LEADERBOARD_BACKEND } from './leaderboard.tokens';
 import { PlayerService } from './player.service';
-
-export interface BoardRow extends Result {
-  playerId: string;
-  name: string;
-  rank: number;
-  isMe: boolean;
-}
+import { rankEntries } from './ranking';
 
 /** A player counts as "playing now" if they were seen within this window. */
 const LIVE_WINDOW_MS = 90_000;
@@ -47,33 +41,18 @@ export class LeaderboardService implements OnDestroy {
     return this.shared && !this.error();
   }
 
-  rows(section: SectionId): BoardRow[] {
-    return this.entries()
-      .filter(entry => entry.best?.[section])
-      .map(entry => ({
-        ...entry.best[section]!,
-        playerId: entry.playerId,
-        name: entry.name,
-        rank: 0,
-        isMe: entry.playerId === this.player.id,
-      }))
-      .sort((first, second) => second.score - first.score || second.correct - first.correct || first.at - second.at)
-      .map((row, index) => ({ ...row, rank: index + 1 }));
-  }
+  /** Every player's latest attempt, best percentage first. */
+  readonly rows = computed(() => rankEntries(this.entries(), this.player.id));
 
-  /** Records a finished attempt, keeping the player's best score per section. */
-  async submit(section: SectionId, result: Result): Promise<'improved' | 'kept'> {
+  /** Records a finished attempt as the player's latest one. */
+  async submit(test: QuizTest, result: Result): Promise<void> {
     const previousEntry = this.entries().find(entry => entry.playerId === this.player.id);
-    const bestResults = { ...(previousEntry?.best ?? {}) };
-    const improved = !bestResults[section] || result.score > bestResults[section]!.score;
-    if (improved) bestResults[section] = result;
     await this.backend.saveScore({
       playerId: this.player.id,
       name: this.player.name(),
-      best: bestResults,
+      last: { ...result, testId: test.id, testLabel: test.label },
       attempts: (previousEntry?.attempts ?? 0) + 1,
     });
-    return improved ? 'improved' : 'kept';
   }
 
   ngOnDestroy(): void {

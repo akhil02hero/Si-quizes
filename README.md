@@ -17,14 +17,16 @@ No sign-up, no ads, no payment. Share it freely with anyone preparing for the ex
 
 ## About the app
 
-Angular 20 app for a timed practice run of the Telangana Police SI Prelims 2022 paper (200 questions), with player names, a leaderboard and a "Playing now" list.
+Angular 20 app for a timed practice run of the Telangana Police SI Prelims 2022 paper (200 questions), plus chapter-wise practice tests in Biology, Chemistry, Physics, Geography and Polity, with player names, a leaderboard and a "Playing now" list.
 
 ## Rules built in
 
 - One timer for the whole test: full paper 3 h, Arithmetic 70 min, Reasoning 45 min, General studies 50 min. When it runs out the saved answers are submitted.
 - Select an option, then **Save & Next**. **Previous** returns to a question and shows the saved option; an unsaved change is dropped when you leave.
 - Nothing about right or wrong is shown until you **Submit test** (two taps).
-- Scoring: +2 correct, −0.2 wrong, 0 skipped. Above 60 = Qualified, above 150 = Well done (scaled for single sections).
+- Practice by subject: category → chapter → tests of up to 50 questions in book order, with 45 seconds per question on one timer for the whole test.
+- Scoring: +2 correct, −0.2 wrong, 0 skipped. Above 60 = Qualified, above 150 = Well done (scaled for single sections; SI paper only).
+- Leaderboard: each player's latest test, ranked by percentage score, with the test named on every row; 20 rows at a time with "Load more".
 - Results show every question with all options, the correct answer, your answer and the explanation.
 
 ## Run it
@@ -52,7 +54,7 @@ Data layout:
 
 | Collection | Doc id | Contents |
 |---|---|---|
-| `scores` | player id | `name`, `best` (best result per section), `attempts`, `updatedAt` |
+| `scores` | player id | `name`, `last` (latest attempt: score, counts, `testId`, `testLabel`, `at`), `attempts`, `updatedAt` |
 | `presence` | player id | `name`, `status`, `questionNumber`, `total`, `answered`, `lastSeen` |
 
 The player id is a random UUID stored in the browser, so there is no sign-in. The rules are open to anyone who has the site, which is fine among friends; add Firebase Auth before sharing it publicly.
@@ -73,10 +75,15 @@ src/app/
     scoring.ts (+ .spec)    marks, cut-offs, verdicts
     quiz.service.ts         attempt state, test timer, save/previous/submit
     player.service.ts       name, anonymous id, live status heartbeat
-    leaderboard.service.ts  ranking and best-score saving
+    leaderboard.service.ts  saving each player's latest attempt
+    ranking.ts (+ .spec)    leaderboard order (by percentage)
     leaderboard.backend.ts  Firestore backend (lazy-loaded) and local fallback
     guards.ts               keeps /quiz and /result from opening without a test
-  features/start | quiz | result
+  practice/
+    catalog.ts              categories, chapters and question counts
+    data/                   questions per category, loaded on demand
+    practice.ts (+ .spec)   splitting chapters into tests, loading a test
+  features/start | practice | quiz | result
   shared/leaderboard, live-players
 public/figures/             diagrams for figure questions (51, 53, 96–100)
 ```
