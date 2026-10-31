@@ -1,41 +1,36 @@
-<!-- Title -->
-<header class="vertical-stack" style="gap:8px">
-  <span class="section-label">TSLPRB · Police SI Prelims 2022 · Practice</span>
+<header class="stack" style="gap:8px">
+  <span class="lbl">TSLPRB · Police SI Prelims 2022 · Practice</span>
   <h1>Sub-Inspector Prelims mock test</h1>
-  <p class="hint-text">200 questions from the 2022 paper: arithmetic, reasoning and general studies.</p>
+  <p class="note">200 questions from the 2022 paper: arithmetic, reasoning and general studies.</p>
 </header>
 
-<!-- The four exam rules at a glance -->
-<div class="rule-summary">
-  <div><b>50 s</b><span>per question, then it moves on</span></div>
+<div class="rules">
+  <div><b>3 h</b><span>for the full paper; the test submits itself when time runs out</span></div>
   <div><b>+2</b><span>for each correct answer</span></div>
   <div><b>−0.2</b><span>for each wrong answer</span></div>
   <div><b>&gt;60</b><span>Qualified · &gt;150 Well done</span></div>
 </div>
 
-<section class="card">
-  <!-- Name: required before any test can start -->
-  <label class="section-label" for="player-name">Your name</label>
-  <input id="player-name" class="name-input" type="text" [attr.maxlength]="maxNameLength" autocomplete="nickname"
-         placeholder="Enter your name to start" [formControl]="playerNameControl">
-  @if (playerNameControl.touched && playerNameControl.invalid) {
-    <p class="error-text">Enter your name first. It shows on the leaderboard.</p>
+<section class="sheet">
+  <label class="lbl" for="player-name">Your name</label>
+  <input id="player-name" class="name" type="text" maxlength="24" autocomplete="nickname"
+         placeholder="Enter your name to start" [formControl]="name">
+  @if (name.touched && name.invalid) {
+    <p class="err">Enter your name first. It shows on the leaderboard.</p>
   }
 
-  <!-- One button per section; clicking starts the test straight away -->
-  <span class="section-label" style="margin-top:6px">Choose what to attempt</span>
-  <div class="section-choices">
+  <span class="lbl" style="margin-top:6px">Choose what to attempt</span>
+  <div class="sections">
     @for (section of sections; track section.id) {
-      <button class="section-choice" type="button" (click)="startTest(section)">
-        <span>{{ section.name }}<br><small>Q{{ section.firstQuestionNumber }}–{{ section.lastQuestionNumber }}</small></span>
-        <small>{{ questionCountOf(section) }} Qs · {{ formatDuration(section) }}</small>
+      <button class="sec" type="button" (click)="begin(section)">
+        <span>{{ section.name }}<br><small>Q{{ section.from }}–{{ section.to }}</small></span>
+        <small>{{ section.to - section.from + 1 }} Qs · {{ duration(section) }}</small>
       </button>
     }
   </div>
-
-  <p class="hint-text">
+  <p class="note">
     For a partial section the 60 / 150 cut-offs are scaled to that section's maximum.
-    Select an option and press Save &amp; Next. Use Previous to revisit a question while it still has time left.
+    Select an option and press Save &amp; Next. Use Previous to revisit any question before time runs out.
     Answers and explanations appear only after you submit. Keys 1–4 select, Enter saves.
   </p>
 </section>

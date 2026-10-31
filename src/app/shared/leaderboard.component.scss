@@ -1,30 +1,20 @@
-/* Ranked list: rank | name and badge | ✓/✗ counts | score */
-.ranking { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-
+.board { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 li {
   display: grid; grid-template-columns: 2.2em minmax(0, 1fr) auto auto; gap: 4px 14px; align-items: center;
-  padding: 10px 0; border-top: 1px solid var(--color-rule);
+  padding: 10px 0; border-top: 1px solid var(--line);
   &:first-child { border-top: 0; }
-  /* Highlight the player on this device. */
-  &.is-current-player { background: var(--color-bubble-soft); border-radius: 6px; padding-inline: 8px; margin-inline: -8px; }
-  &.is-first-place .rank { color: var(--color-bubble); }
+  &.me { background: var(--omr-soft); border-radius: 6px; padding-inline: 8px; margin-inline: -8px; }
+  &.top .rk { color: var(--omr); }
 }
-
-.rank { font-family: var(--font-numbers); font-weight: 700; color: var(--color-muted); }
-
-.player-name {
-  font-family: var(--font-display); font-weight: 700;
-  /* Long names are cut with "…" instead of widening the row. */
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  small { font-family: var(--font-body); font-weight: 400; color: var(--color-muted); font-size: 13px; margin-left: 6px; }
+.rk { font-family: var(--mono); font-weight: 700; color: var(--muted); }
+.nm {
+  font-family: var(--display); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  small { font-family: var(--body); font-weight: 400; color: var(--muted); font-size: 13px; margin-left: 6px; }
 }
-
-.score, .right-and-wrong-counts { font-family: var(--font-numbers); font-variant-numeric: tabular-nums; text-align: right; }
-.score { font-weight: 700; }
-.right-and-wrong-counts { font-size: 13px; color: var(--color-muted); }
-
-/* On phones, move the ✓/✗ counts under the name. */
+.sc, .cw { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+.sc { font-weight: 700; }
+.cw { font-size: 13px; color: var(--muted); }
 @media (max-width: 440px) {
   li { grid-template-columns: 2em minmax(0, 1fr) auto; }
-  .right-and-wrong-counts { grid-column: 2 / 4; text-align: left; }
+  .cw { grid-column: 2 / 4; text-align: left; }
 }

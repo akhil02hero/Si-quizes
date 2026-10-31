@@ -1,37 +1,12 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { NO_ANSWER, QuizService } from '../../core/quiz.service';
+import { QuizService } from '../../core/quiz.service';
 import { PlayerService } from '../../core/player.service';
-import { Question } from '../../core/models';
-import { VERDICT_LABELS, cutoffsFor, verdictFor } from '../../core/scoring';
+import { VERDICT_LABEL, cutoffs, verdictFor } from '../../core/scoring';
 import { LeaderboardComponent } from '../../shared/leaderboard.component';
 
-/** How a single answer turned out. */
-type AnswerOutcome = 'correct' | 'wrong' | 'skipped';
+type Filter = 'all' | 'wrong' | 'skipped' | 'correct';
 
-/** Which answers to list in the review. */
-type ReviewFilter = 'all' | AnswerOutcome;
-
-/** One question in the answer review. */
-interface ReviewItem {
-  question: Question;
-  /** Option the player saved (1-4), or NO_ANSWER. */
-  playerAnswer: number;
-  outcome: AnswerOutcome;
-}
-
-/** Text shown for each outcome in the review. */
-const OUTCOME_LABELS: Record<AnswerOutcome, string> = {
-  correct: 'Correct',
-  wrong: 'Wrong',
-  skipped: 'Skipped',
-};
-
-/**
- * Result screen: score and verdict, the counts, the leaderboard, and every
- * question with the correct answer, the player's answer and the explanation.
- * This is the first place right and wrong are shown.
- */
 @Component({
   selector: 'app-result',
   imports: [LeaderboardComponent],
@@ -40,68 +15,51 @@ const OUTCOME_LABELS: Record<AnswerOutcome, string> = {
 })
 export class ResultComponent {
   private readonly router = inject(Router);
-  private readonly playerService = inject(PlayerService);
-  protected readonly quizService = inject(QuizService);
+  private readonly player = inject(PlayerService);
+  protected readonly quiz = inject(QuizService);
 
-  // The route guard guarantees both exist on this screen.
-  protected readonly result = computed(() => this.quizService.result()!);
-  protected readonly session = computed(() => this.quizService.session()!);
-
-  protected readonly verdict = computed(() => verdictFor(this.result().score, this.result().totalQuestions));
-  protected readonly verdictLabels = VERDICT_LABELS;
-  protected readonly outcomeLabels = OUTCOME_LABELS;
-  protected readonly cutoffs = computed(() => cutoffsFor(this.result().totalQuestions));
-  protected readonly isFullPaper = computed(() => this.result().totalQuestions === 200);
-
-  /** Share of attempted questions answered correctly, e.g. "80%"; "–" if nothing was attempted. */
-  protected readonly accuracyText = computed(() => {
-    const { correctCount, wrongCount } = this.result();
-    const attemptedCount = correctCount + wrongCount;
-    return attemptedCount ? `${Math.round((correctCount * 100) / attemptedCount)}%` : '–';
+  protected readonly result = computed(() => this.quiz.result()!);
+  protected readonly session = computed(() => this.quiz.session()!);
+  protected readonly verdict = computed(() => verdictFor(this.result().score, this.result().total));
+  protected readonly verdictLabel = VERDICT_LABEL;
+  protected readonly scaledCutoffs = computed(() => cutoffs(this.result().total));
+  protected readonly accuracy = computed(() => {
+    const attempted = this.result().correct + this.result().wrong;
+    return attempted ? Math.round((this.result().correct * 100) / attempted) + '%' : '–';
   });
 
-  protected readonly reviewFilters: { id: ReviewFilter; label: string }[] = [
+  protected readonly filters: { id: Filter; label: string }[] = [
     { id: 'all', label: 'All' },
     { id: 'wrong', label: 'Wrong' },
     { id: 'skipped', label: 'Skipped' },
     { id: 'correct', label: 'Correct' },
   ];
-  protected readonly selectedReviewFilter = signal<ReviewFilter>('all');
+  protected readonly filter = signal<Filter>('all');
 
-  /** Questions to list, after applying the chosen filter. */
-  protected readonly reviewItems = computed<ReviewItem[]>(() => {
-    const { questions, savedAnswers } = this.session();
-    const filter = this.selectedReviewFilter();
-
+  protected readonly review = computed(() => {
+    const { questions, saved } = this.session();
+    const activeFilter = this.filter();
     return questions
-      .map((question, position) => {
-        const playerAnswer = savedAnswers[position];
-        const outcome: AnswerOutcome =
-          playerAnswer === NO_ANSWER ? 'skipped' : playerAnswer === question.correctOption ? 'correct' : 'wrong';
-        return { question, playerAnswer, outcome };
+      .map((question, index) => {
+        const myAnswer = saved[index];
+        const state: Exclude<Filter, 'all'> = !myAnswer ? 'skipped' : myAnswer === question.answer ? 'correct' : 'wrong';
+        return { question, myAnswer, state };
       })
-      .filter(item => filter === 'all' || item.outcome === filter);
+      .filter(item => activeFilter === 'all' || item.state === activeFilter);
   });
 
-  /** Message about saving to the leaderboard; empty before saving starts. */
-  protected readonly leaderboardSaveMessage = computed(() => {
-    switch (this.quizService.leaderboardSaveStatus()) {
-      case 'saving':
-        return 'Saving to the leaderboard…';
-      case 'saved':
-        return 'Saved to the leaderboard.';
-      case 'kept-best':
-        return 'Saved. Your earlier best in this section is still higher.';
-      case 'error':
-        return 'Not saved: the leaderboard could not be reached.';
-      default:
-        return '';
+  protected readonly saveText = computed(() => {
+    switch (this.quiz.saveStatus()) {
+      case 'saving': return 'Saving to the leaderboard…';
+      case 'saved': return 'Saved to the leaderboard.';
+      case 'kept-best': return 'Saved. Your earlier best in this section is still higher.';
+      case 'error': return 'Not saved: the leaderboard could not be reached.';
+      default: return '';
     }
   });
 
-  /** Back to the start screen to pick another test. */
-  protected takeAnotherTest(): void {
-    this.playerService.returnToLobby();
+  protected startAgain(): void {
+    this.player.setStatus({ status: 'lobby', questionNumber: 0, total: 0, answered: 0 });
     void this.router.navigate(['/']);
   }
 }

@@ -1,275 +1,191 @@
 import { Injectable, OnDestroy, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { QUESTIONS } from './questions';
-import { Question, Section, TestResult } from './models';
-import { SECONDS_PER_QUESTION, scoreAnswers } from './scoring';
+import { Question, Result, Section } from './models';
+import { scoreAnswers } from './scoring';
 import { PlayerService } from './player.service';
 import { LeaderboardService } from './leaderboard.service';
 
-/** Value stored for a question that has no answer. Options are numbered 1-4. */
-export const NO_ANSWER = 0;
-
-/** State of one test attempt in progress. */
-export interface TestSession {
-  /** The part of the paper being attempted. */
+/** State of one in-progress attempt. The arrays are indexed in step with `questions`. */
+export interface Session {
   section: Section;
-  /** The questions in this test, in order. */
   questions: readonly Question[];
-  /** Position (0-based) of the question on screen. */
-  currentIndex: number;
-  /** Saved answer per question; these are what get scored. NO_ANSWER when none. */
-  savedAnswers: number[];
-  /** What is highlighted on screen per question, which may not be saved yet. */
-  selectedOptions: number[];
-  /** Seconds left per question. Each question keeps its own countdown. */
-  secondsLeftPerQuestion: number[];
+  /** Position of the question on screen. */
+  index: number;
+  /** Saved answers (what gets scored). 0 = none. */
+  saved: number[];
+  /** Current, possibly unsaved, selection per question. */
+  selected: number[];
+  /** Seconds left for the whole test. */
+  secondsLeft: number;
 }
 
-/** Progress of saving the result to the leaderboard, shown on the result screen. */
-export type LeaderboardSaveStatus = 'idle' | 'saving' | 'saved' | 'kept-best' | 'error';
-
-/** How often the countdown ticks, in milliseconds. */
-const ONE_SECOND = 1000;
-
 /**
- * Runs one test attempt: moving between questions, the per-question countdown,
- * selecting and saving answers, submitting, and saving the result.
- *
- * State lives in Angular signals, so components re-render automatically.
- * Every change makes a fresh copy of the session (see `updateSession`), so
- * signals always see a new value.
+ * Progress of sending the result to the leaderboard.
+ * 'kept-best' means the upload worked but an earlier, better score was kept.
  */
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'kept-best' | 'error' | 'offline';
+
+/** Holds one test attempt: navigation, the test timer, saved answers and the final result. */
 @Injectable({ providedIn: 'root' })
 export class QuizService implements OnDestroy {
   private readonly router = inject(Router);
-  private readonly playerService = inject(PlayerService);
-  private readonly leaderboardService = inject(LeaderboardService);
+  private readonly player = inject(PlayerService);
+  private readonly board = inject(LeaderboardService);
+  /** Counts down the whole test; null while no test is running. */
+  private timer: ReturnType<typeof setInterval> | null = null;
 
-  /** The running countdown, or null when no question is being timed. */
-  private countdownTimer: ReturnType<typeof setInterval> | null = null;
+  /** The running attempt, or null before the first start. */
+  readonly session = signal<Session | null>(null);
+  /** Score of the last submitted attempt; cleared when a new one starts. */
+  readonly result = signal<Result | null>(null);
+  readonly saveStatus = signal<SaveStatus>('idle');
 
-  /** The attempt in progress, or null before a test starts. */
-  readonly session = signal<TestSession | null>(null);
-  /** The score after submitting, or null while the test is still running. */
-  readonly result = signal<TestResult | null>(null);
-  /** Whether the result has reached the leaderboard yet. */
-  readonly leaderboardSaveStatus = signal<LeaderboardSaveStatus>('idle');
-
-  /** The question currently on screen. */
-  readonly currentQuestion = computed(() => {
+  // Views of the current question, for the template.
+  readonly question = computed(() => {
     const session = this.session();
-    return session ? session.questions[session.currentIndex] : null;
+    return session ? session.questions[session.index] : null;
+  });
+  readonly secondsLeft = computed(() => this.session()?.secondsLeft ?? 0);
+  readonly selected = computed(() => {
+    const session = this.session();
+    return session ? session.selected[session.index] : 0;
+  });
+  readonly savedAnswer = computed(() => {
+    const session = this.session();
+    return session ? session.saved[session.index] : 0;
+  });
+  /** Number of questions with a saved answer, across the whole attempt. */
+  readonly savedCount = computed(() => this.session()?.saved.filter(Boolean).length ?? 0);
+  readonly isFirst = computed(() => this.session()?.index === 0);
+  readonly isLast = computed(() => {
+    const session = this.session();
+    return !!session && session.index === session.questions.length - 1;
   });
 
-  /** Seconds left on the current question (never below 0). */
-  readonly secondsLeft = computed(() => {
-    const session = this.session();
-    return session ? Math.max(0, session.secondsLeftPerQuestion[session.currentIndex]) : 0;
-  });
-
-  /** True once the current question has run out of time; it is then locked. */
-  readonly isTimeUp = computed(() => this.secondsLeft() <= 0);
-
-  /** Option highlighted on the current question (may be unsaved). */
-  readonly selectedOption = computed(() => {
-    const session = this.session();
-    return session ? session.selectedOptions[session.currentIndex] : NO_ANSWER;
-  });
-
-  /** Option saved for the current question. */
-  readonly savedOption = computed(() => {
-    const session = this.session();
-    return session ? session.savedAnswers[session.currentIndex] : NO_ANSWER;
-  });
-
-  /** How many questions in this test have a saved answer. */
-  readonly savedAnswerCount = computed(
-    () => this.session()?.savedAnswers.filter(answer => answer !== NO_ANSWER).length ?? 0,
-  );
-
-  readonly isFirstQuestion = computed(() => this.session()?.currentIndex === 0);
-
-  readonly isLastQuestion = computed(() => {
-    const session = this.session();
-    return !!session && session.currentIndex === session.questions.length - 1;
-  });
-
-  /** Starts a fresh attempt at a section and opens the quiz screen. */
+  /** Begin a fresh attempt at the section's question range and open the quiz page. */
   start(section: Section): void {
-    const questions = QUESTIONS.filter(
-      question => question.number >= section.firstQuestionNumber && question.number <= section.lastQuestionNumber,
-    );
-    const questionCount = questions.length;
-
+    const questions = QUESTIONS.filter(question => question.number >= section.from && question.number <= section.to);
+    const count = questions.length;
     this.result.set(null);
-    this.leaderboardSaveStatus.set('idle');
+    this.saveStatus.set('idle');
     this.session.set({
       section,
       questions,
-      currentIndex: 0,
-      savedAnswers: Array(questionCount).fill(NO_ANSWER),
-      selectedOptions: Array(questionCount).fill(NO_ANSWER),
-      secondsLeftPerQuestion: Array(questionCount).fill(SECONDS_PER_QUESTION),
+      index: 0,
+      saved: Array(count).fill(0),
+      selected: Array(count).fill(0),
+      secondsLeft: section.minutes * 60,
     });
-
-    this.startCountdown();
-    this.reportProgress();
+    this.startTimer();
+    this.reportPresence();
     void this.router.navigate(['/quiz']);
   }
 
-  /** Highlights an option (1-4) on the current question. Nothing is saved until Save. */
-  selectOption(option: number): void {
-    if (this.isTimeUp()) return;
-    this.updateSession(session => {
-      session.selectedOptions[session.currentIndex] = option;
+  /** Mark an option on the current question. It only counts once saved. */
+  select(option: number): void {
+    this.patch(session => (session.selected[session.index] = option));
+  }
+
+  /** Remove both the selection and the saved answer of the current question. */
+  clear(): void {
+    this.patch(session => {
+      session.selected[session.index] = 0;
+      session.saved[session.index] = 0;
     });
   }
 
-  /** Removes both the highlighted and the saved answer for the current question. */
-  clearAnswer(): void {
-    if (this.isTimeUp()) return;
-    this.updateSession(session => {
-      session.selectedOptions[session.currentIndex] = NO_ANSWER;
-      session.savedAnswers[session.currentIndex] = NO_ANSWER;
-    });
-  }
-
-  /** Saves the highlighted option and moves to the next question (stays put on the last one). */
+  /** Save the selection and go to the next question. */
   saveAndNext(): void {
-    if (!this.isTimeUp()) {
-      this.updateSession(session => {
-        session.savedAnswers[session.currentIndex] = session.selectedOptions[session.currentIndex];
-      });
-    }
-    this.reportProgress();
-    this.moveBy(1);
+    this.patch(session => (session.saved[session.index] = session.selected[session.index]));
+    this.reportPresence();
+    this.move(1);
   }
 
-  /** Goes back one question. Its saved answer and remaining time are still there. */
-  goToPreviousQuestion(): void {
-    this.moveBy(-1);
+  /** Go back one question without saving. */
+  previous(): void {
+    this.move(-1);
   }
 
-  /** Ends the test: scores it, shows the result screen and saves to the leaderboard. */
+  /** End the attempt: score the saved answers, show the result and upload it in the background. */
   submit(): void {
     const session = this.session();
     if (!session) return;
-
-    this.stopCountdown();
-    const result = scoreAnswers(session.questions, session.savedAnswers);
+    this.stopTimer();
+    const result = scoreAnswers(session.questions, session.saved);
     this.result.set(result);
-
-    this.playerService.updateProgress({
-      activity: 'done',
-      currentQuestionNumber: session.questions.length,
-      totalQuestions: session.questions.length,
-      answeredCount: this.savedAnswerCount(),
+    this.player.setStatus({
+      status: 'done',
+      questionNumber: session.questions.length,
+      total: session.questions.length,
+      answered: this.savedCount(),
     });
-
     void this.router.navigate(['/result']);
-    void this.saveResultToLeaderboard(session.section, result);
+    void this.persist(session.section, result);
   }
 
-  /**
-   * Moves forward (+1) or back (-1). Leaving a question throws away an unsaved
-   * selection, so coming back shows the saved answer again.
-   */
-  private moveBy(step: number): void {
+  /** Leave a question: an unsaved change is dropped and the saved answer shows again on return. */
+  private move(step: number): void {
     const session = this.session();
     if (!session) return;
-
-    const targetIndex = session.currentIndex + step;
-    const isOutOfRange = targetIndex < 0 || targetIndex >= session.questions.length;
-    if (isOutOfRange) return;
-
-    this.updateSession(draft => {
-      const questionStillHasTime = draft.secondsLeftPerQuestion[draft.currentIndex] > 0;
-      if (questionStillHasTime) {
-        draft.selectedOptions[draft.currentIndex] = draft.savedAnswers[draft.currentIndex];
-      }
-      draft.currentIndex = targetIndex;
+    const targetIndex = session.index + step;
+    if (targetIndex < 0 || targetIndex >= session.questions.length) return;
+    this.patch(draft => {
+      draft.selected[draft.index] = draft.saved[draft.index];
+      draft.index = targetIndex;
     });
-
-    this.startCountdown();
-    this.reportProgress();
+    this.reportPresence();
   }
 
-  /** Starts ticking down the current question, unless it has already run out. */
-  private startCountdown(): void {
-    this.stopCountdown();
-    if (this.isTimeUp()) return;
-    this.countdownTimer = setInterval(() => this.onCountdownTick(), ONE_SECOND);
+  private startTimer(): void {
+    this.stopTimer();
+    this.timer = setInterval(() => this.tick(), 1000);
   }
 
-  private stopCountdown(): void {
-    if (this.countdownTimer) clearInterval(this.countdownTimer);
-    this.countdownTimer = null;
+  private stopTimer(): void {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = null;
   }
 
-  /** Runs every second while a question is on screen. */
-  private onCountdownTick(): void {
-    this.updateSession(session => {
-      const index = session.currentIndex;
-      session.secondsLeftPerQuestion[index] = Math.max(0, session.secondsLeftPerQuestion[index] - 1);
-    });
-    if (!this.isTimeUp()) return;
-
-    // Time's up: discard any unsaved selection, then move on.
-    this.stopCountdown();
-    this.updateSession(session => {
-      session.selectedOptions[session.currentIndex] = session.savedAnswers[session.currentIndex];
-    });
-
-    const session = this.session()!;
-    const hasNextQuestion = session.currentIndex < session.questions.length - 1;
-    const everyQuestionIsOutOfTime = session.secondsLeftPerQuestion.every(seconds => seconds <= 0);
-
-    if (hasNextQuestion) this.moveBy(1);
-    else if (everyQuestionIsOutOfTime) this.submit();
-    // Otherwise the last question just stays locked; the player can go back or submit.
+  /** One second off the test clock; when it reaches zero the saved answers are submitted. */
+  private tick(): void {
+    this.patch(session => (session.secondsLeft = Math.max(0, session.secondsLeft - 1)));
+    if (this.secondsLeft() <= 0) this.submit();
   }
 
-  /**
-   * Changes the session through a copy, so the signal always gets a new object
-   * and every computed value and template updates.
-   */
-  private updateSession(applyChange: (draft: TestSession) => void): void {
+  /** Change the session through a copy so the signal sees a new value and computeds update. */
+  private patch(update: (session: Session) => void): void {
     const session = this.session();
     if (!session) return;
-
-    const draft: TestSession = {
-      ...session,
-      savedAnswers: [...session.savedAnswers],
-      selectedOptions: [...session.selectedOptions],
-      secondsLeftPerQuestion: [...session.secondsLeftPerQuestion],
-    };
-    applyChange(draft);
-    this.session.set(draft);
+    const copy: Session = { ...session, saved: [...session.saved], selected: [...session.selected] };
+    update(copy);
+    this.session.set(copy);
   }
 
-  /** Tells the "Playing now" list which question this player is on. */
-  private reportProgress(): void {
+  /** Tell other players which question this player is on and how many are answered. */
+  private reportPresence(): void {
     const session = this.session();
     if (!session) return;
-    this.playerService.updateProgress({
-      activity: 'playing',
-      currentQuestionNumber: session.currentIndex + 1,
-      totalQuestions: session.questions.length,
-      answeredCount: this.savedAnswerCount(),
+    this.player.setStatus({
+      status: 'playing',
+      questionNumber: session.index + 1,
+      total: session.questions.length,
+      answered: this.savedCount(),
     });
   }
 
-  private async saveResultToLeaderboard(section: Section, result: TestResult): Promise<void> {
-    this.leaderboardSaveStatus.set('saving');
+  /** Upload the result to the leaderboard and reflect the outcome in saveStatus. */
+  private async persist(section: Section, result: Result): Promise<void> {
+    this.saveStatus.set('saving');
     try {
-      const outcome = await this.leaderboardService.recordResult(section.id, result);
-      this.leaderboardSaveStatus.set(outcome === 'new-best' ? 'saved' : 'kept-best');
+      const outcome = await this.board.submit(section.id, result);
+      this.saveStatus.set(outcome === 'improved' ? 'saved' : 'kept-best');
     } catch {
-      this.leaderboardSaveStatus.set('error');
+      this.saveStatus.set('error');
     }
   }
 
   ngOnDestroy(): void {
-    this.stopCountdown();
+    this.stopTimer();
   }
 }

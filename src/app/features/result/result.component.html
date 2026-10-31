@@ -1,84 +1,59 @@
-<!-- Score summary -->
-<section class="card" style="gap:16px">
-  <span class="section-label">
-    {{ session().section.name }} · Q{{ session().section.firstQuestionNumber }}–{{ session().section.lastQuestionNumber }}
-  </span>
-
-  <!-- Big score out of the maximum (2 marks per question) -->
-  <div class="score-line"><b>{{ result().score }}</b><span>/ {{ result().totalQuestions * 2 }}</span></div>
-  <div><span class="verdict" [class]="verdict()">{{ verdictLabels[verdict()] }}</span></div>
-
-  <p class="hint-text">
-    @if (isFullPaper()) {
+<section class="sheet" style="gap:16px">
+  <span class="lbl">{{ session().section.name }} · Q{{ session().section.from }}–{{ session().section.to }}</span>
+  <div class="score"><b>{{ result().score }}</b><span>/ {{ result().total * 2 }}</span></div>
+  <div><span class="verdict" [class]="verdict()">{{ verdictLabel[verdict()] }}</span></div>
+  <p class="note">
+    @if (result().total === 200) {
       Above 60 is Qualified; above 150 is Well done.
     } @else {
-      Cut-offs scaled for {{ result().totalQuestions }} questions:
-      above {{ cutoffs().qualifyingScore }} is Qualified, above {{ cutoffs().wellDoneScore }} is Well done.
+      Cut-offs scaled for {{ result().total }} questions: above {{ scaledCutoffs().qualify }} is Qualified, above {{ scaledCutoffs().wellDone }} is Well done.
     }
   </p>
-
-  <div class="score-breakdown">
-    <div><b>{{ result().correctCount }}</b><span>Correct (+2 each)</span></div>
-    <div><b>{{ result().wrongCount }}</b><span>Wrong (−0.2 each)</span></div>
-    <div><b>{{ result().skippedCount }}</b><span>Skipped / timed out</span></div>
-    <div><b>{{ accuracyText() }}</b><span>Accuracy of attempted</span></div>
+  <div class="stats">
+    <div><b>{{ result().correct }}</b><span>Correct (+2 each)</span></div>
+    <div><b>{{ result().wrong }}</b><span>Wrong (−0.2 each)</span></div>
+    <div><b>{{ result().skipped }}</b><span>Skipped / timed out</span></div>
+    <div><b>{{ accuracy() }}</b><span>Accuracy of attempted</span></div>
   </div>
-
-  @if (leaderboardSaveMessage()) {
-    <p class="hint-text">{{ leaderboardSaveMessage() }}</p>
-  }
-
-  <div class="button-row" style="justify-content:flex-start">
-    <button class="button" type="button" (click)="takeAnotherTest()">Take another test</button>
+  @if (saveText()) { <p class="note">{{ saveText() }}</p> }
+  <div class="actions" style="justify-content:flex-start">
+    <button class="btn" type="button" (click)="startAgain()">Take another test</button>
   </div>
 </section>
 
-<!-- Leaderboard opens on the section just taken -->
-<app-leaderboard [initialSectionId]="session().section.id" />
+<app-leaderboard [section]="session().section.id" />
 
-<!-- Every question with the answer and explanation -->
-<section class="card">
+<section class="sheet">
   <h2>Answers &amp; explanations</h2>
-
-  <div class="pill-group" role="group" aria-label="Filter answers">
-    @for (filter of reviewFilters; track filter.id) {
-      <button class="pill" type="button" [attr.aria-pressed]="selectedReviewFilter() === filter.id"
-              (click)="selectedReviewFilter.set(filter.id)">{{ filter.label }}</button>
+  <div class="chips" role="group" aria-label="Filter answers">
+    @for (filterOption of filters; track filterOption.id) {
+      <button class="chip" type="button" [attr.aria-pressed]="filter() === filterOption.id" (click)="filter.set(filterOption.id)">{{ filterOption.label }}</button>
     }
   </div>
-
-  <ol class="answer-review">
-    @for (item of reviewItems(); track item.question.number) {
+  <ol class="review">
+    @for (item of review(); track item.question.number) {
       <li>
-        <span class="question-number">Q{{ item.question.number }}</span>
-        <div class="review-body">
+        <span class="n">Q{{ item.question.number }}</span>
+        <div class="body">
           <p>{{ item.question.text }}</p>
-          @if (item.question.figureImagePath) {
-            <img [src]="item.question.figureImagePath" alt="Figure for question {{ item.question.number }}" loading="lazy">
-          }
-
-          <!-- All four options: the correct one in green, the player's wrong pick in red -->
-          <ul class="review-options">
-            @for (optionText of item.question.options; track $index) {
-              @let optionNumber = $index + 1;
-              @let isCorrectOption = optionNumber === item.question.correctOption;
-              @let isPlayersWrongPick = optionNumber === item.playerAnswer && !isCorrectOption;
-              <li [class.is-correct-option]="isCorrectOption" [class.is-wrong-pick]="isPlayersWrongPick">
-                ({{ optionNumber }}) {{ optionText }}
-                @if (isCorrectOption) { <span>✓ answer</span> }
-                @else if (isPlayersWrongPick) { <span>✗ your answer</span> }
+          @if (item.question.figure) { <img [src]="item.question.figure" alt="Figure for question {{ item.question.number }}" loading="lazy"> }
+          <ul class="ropts">
+            @for (option of item.question.options; track $index) {
+              <li [class.ans]="$index + 1 === item.question.answer" [class.mine]="$index + 1 === item.myAnswer && item.myAnswer !== item.question.answer">
+                ({{ $index + 1 }}) {{ option }}
+                @if ($index + 1 === item.question.answer) { <span>✓ answer</span> }
+                @else if ($index + 1 === item.myAnswer) { <span>✗ your answer</span> }
               </li>
             }
           </ul>
-
-          <p class="outcome" [class]="item.outcome">{{ outcomeLabels[item.outcome] }}</p>
-          @if (item.question.explanation) {
-            <p class="explanation">{{ item.question.explanation }}</p>
-          }
+          <p class="state" [class]="item.state">
+            {{ item.state === 'correct' ? 'Correct' : item.state === 'wrong' ? 'Wrong' : 'Skipped' }}
+          </p>
+          @if (item.question.explanation) { <p class="ex">{{ item.question.explanation }}</p> }
         </div>
       </li>
     } @empty {
-      <li class="hint-text">Nothing here.</li>
+      <li class="note">Nothing here.</li>
     }
   </ol>
 </section>

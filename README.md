@@ -6,7 +6,7 @@
 
 This is a free, non-commercial practice tool to help aspirants preparing for the **Telangana State Police Sub-Inspector (SI) exam** get used to the real Prelims paper under exam conditions. It recreates the 2022 Prelims (200 questions on arithmetic, reasoning & mental ability, and general studies with a Telangana focus) as a timed mock test, so you can:
 
-- practise pacing at 50 seconds per question,
+- practise pacing against a fixed time for the whole test,
 - face the real marking scheme, including negative marks for wrong answers,
 - see your score against the qualifying mark, and
 - learn from a worked explanation for every question once you submit.
@@ -21,7 +21,7 @@ Angular 20 app for a timed practice run of the Telangana Police SI Prelims 2022 
 
 ## Rules built in
 
-- 50 seconds per question, each question keeps its own timer. When it runs out the test moves on.
+- One timer for the whole test: full paper 3 h, Arithmetic 70 min, Reasoning 45 min, General studies 50 min. When it runs out the saved answers are submitted.
 - Select an option, then **Save & Next**. **Previous** returns to a question and shows the saved option; an unsaved change is dropped when you leave.
 - Nothing about right or wrong is shown until you **Submit test** (two taps).
 - Scoring: +2 correct, −0.2 wrong, 0 skipped. Above 60 = Qualified, above 150 = Well done (scaled for single sections).
@@ -52,8 +52,8 @@ Data layout:
 
 | Collection | Doc id | Contents |
 |---|---|---|
-| `scores` | player id | `playerName`, `bestResultBySection`, `attemptCount`, `updatedAt` |
-| `presence` | player id | `playerName`, `activity`, `currentQuestionNumber`, `totalQuestions`, `answeredCount`, `lastSeenAt` |
+| `scores` | player id | `name`, `best` (best result per section), `attempts`, `updatedAt` |
+| `presence` | player id | `name`, `status`, `questionNumber`, `total`, `answered`, `lastSeen` |
 
 The player id is a random UUID stored in the browser, so there is no sign-in. The rules are open to anyone who has the site, which is fine among friends; add Firebase Auth before sharing it publicly.
 
@@ -61,8 +61,7 @@ The player id is a random UUID stored in the browser, so there is no sign-in. Th
 
 This repo deploys itself to GitHub Pages: every push to `main` runs `.github/workflows/deploy-pages.yml`, which builds with `npm run build:pages` (hash routing, base href `/Si-quizes/`). Live site: https://akhil02hero.github.io/Si-quizes/
 
-Other hosts: 
-Any static host works. Serve `dist/si-prelims-quiz/browser` and rewrite unknown paths to `index.html`, for example Firebase Hosting (`firebase init hosting`, public dir `dist/si-prelims-quiz/browser`, single-page app: yes), Netlify or Vercel.
+Other hosts: any static host works. Serve `dist/si-prelims-quiz/browser` and rewrite unknown paths to `index.html`, for example Firebase Hosting (`firebase init hosting`, public dir `dist/si-prelims-quiz/browser`, single-page app: yes), Netlify or Vercel.
 
 ## Project layout
 
@@ -70,9 +69,9 @@ Any static host works. Serve `dist/si-prelims-quiz/browser` and rewrite unknown 
 src/app/
   core/
     questions.ts            all 200 questions, answers and explanations
-    models.ts               types and sections (documented field by field)
+    models.ts               types, sections and their time limits
     scoring.ts (+ .spec)    marks, cut-offs, verdicts
-    quiz.service.ts         attempt state, per-question timers, save/previous/submit
+    quiz.service.ts         attempt state, test timer, save/previous/submit
     player.service.ts       name, anonymous id, live status heartbeat
     leaderboard.service.ts  ranking and best-score saving
     leaderboard.backend.ts  Firestore backend (lazy-loaded) and local fallback
