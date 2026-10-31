@@ -11,7 +11,7 @@
   </div>
 
   <section class="sheet">
-    <span class="lbl">{{ sectionOf(question.number) }}</span>
+    <span class="lbl">{{ session.test.topic ?? sectionOf(question.number) }}</span>
     <p class="qtext">{{ question.text }}</p>
     @if (question.figure) {
       <div class="figure">

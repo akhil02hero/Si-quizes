@@ -1,14 +1,13 @@
 import { Injectable, OnDestroy, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { QUESTIONS } from './questions';
-import { Question, Result, Section } from './models';
+import { Question, QuizTest, Result, SectionId } from './models';
 import { scoreAnswers } from './scoring';
 import { PlayerService } from './player.service';
 import { LeaderboardService } from './leaderboard.service';
 
 /** State of one in-progress attempt. The arrays are indexed in step with `questions`. */
 export interface Session {
-  section: Section;
+  test: QuizTest;
   questions: readonly Question[];
   /** Position of the question on screen. */
   index: number;
@@ -63,19 +62,19 @@ export class QuizService implements OnDestroy {
     return !!session && session.index === session.questions.length - 1;
   });
 
-  /** Begin a fresh attempt at the section's question range and open the quiz page. */
-  start(section: Section): void {
-    const questions = QUESTIONS.filter(question => question.number >= section.from && question.number <= section.to);
+  /** Begin a fresh attempt at a test and open the quiz page. */
+  start(test: QuizTest): void {
+    const questions = test.questions;
     const count = questions.length;
     this.result.set(null);
     this.saveStatus.set('idle');
     this.session.set({
-      section,
+      test,
       questions,
       index: 0,
       saved: Array(count).fill(0),
       selected: Array(count).fill(0),
-      secondsLeft: section.minutes * 60,
+      secondsLeft: test.seconds,
     });
     this.startTimer();
     this.reportPresence();
@@ -121,7 +120,8 @@ export class QuizService implements OnDestroy {
       answered: this.savedCount(),
     });
     void this.router.navigate(['/result']);
-    void this.persist(session.section, result);
+    // Practice tests reach the leaderboard once it shows every kind of test (phase 4).
+    if (session.test.hasVerdict) void this.persist(session.test.id as SectionId, result);
   }
 
   /** Leave a question: an unsaved change is dropped and the saved answer shows again on return. */
@@ -175,10 +175,10 @@ export class QuizService implements OnDestroy {
   }
 
   /** Upload the result to the leaderboard and reflect the outcome in saveStatus. */
-  private async persist(section: Section, result: Result): Promise<void> {
+  private async persist(section: SectionId, result: Result): Promise<void> {
     this.saveStatus.set('saving');
     try {
-      const outcome = await this.board.submit(section.id, result);
+      const outcome = await this.board.submit(section, result);
       this.saveStatus.set(outcome === 'improved' ? 'saved' : 'kept-best');
     } catch {
       this.saveStatus.set('error');

@@ -4,7 +4,7 @@ export interface Question {
   options: readonly string[];
   /** 1-based index of the correct option. */
   answer: number;
-  explanation: string;
+  explanation?: string;
   /** Path under /public, for figure-based questions. */
   figure?: string;
 }
@@ -30,6 +30,21 @@ export const SECTIONS: readonly Section[] = [
 
 export function sectionOf(questionNumber: number): string {
   return questionNumber <= 50 ? 'Arithmetic' : questionNumber <= 100 ? 'Reasoning & mental ability' : 'General studies';
+}
+
+/** Anything that can be taken as one timed test: a section of the SI paper or a practice test. */
+export interface QuizTest {
+  /** 'all' / 'ar' / 're' / 'gs' for the SI paper, 'biology/04/2' for a practice test. */
+  id: string;
+  /** Which test this is, e.g. 'Biology · Human Physiology · Test 2'. Shown on the result and leaderboard. */
+  label: string;
+  questions: readonly Question[];
+  /** Time allowed for the whole test. */
+  seconds: number;
+  /** Show the Qualified / Well done verdict (SI paper only). */
+  hasVerdict: boolean;
+  /** Heading above each question; without it the SI paper's section name is shown. */
+  topic?: string;
 }
 
 export interface Result {

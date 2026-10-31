@@ -13,7 +13,7 @@ export class QuizComponent implements OnDestroy {
   protected readonly playerName = inject(PlayerService).name;
   protected readonly sectionOf = sectionOf;
 
-  protected readonly totalSeconds = computed(() => (this.quiz.session()?.section.minutes ?? 0) * 60);
+  protected readonly totalSeconds = computed(() => this.quiz.session()?.test.seconds ?? 0);
   protected readonly timeLeftFraction = computed(() => this.quiz.secondsLeft() / (this.totalSeconds() || 1));
   /** Last 5 minutes are shown in red. */
   protected readonly isLowOnTime = computed(() => this.quiz.secondsLeft() <= 5 * 60);

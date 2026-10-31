@@ -3,6 +3,7 @@ import { AbstractControl, FormControl, ReactiveFormsModule, ValidationErrors, Va
 import { PlayerService } from '../../core/player.service';
 import { QuizService } from '../../core/quiz.service';
 import { SECTIONS, Section } from '../../core/models';
+import { paperTest } from '../../core/paper-test';
 import { LeaderboardComponent } from '../../shared/leaderboard.component';
 import { LivePlayersComponent } from '../../shared/live-players.component';
 
@@ -36,6 +37,6 @@ export class StartComponent {
       return;
     }
     this.player.setName(this.name.value);
-    this.quiz.start(section);
+    this.quiz.start(paperTest(section));
   }
 }
